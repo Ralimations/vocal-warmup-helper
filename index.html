@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#090b15" />
+    <meta name="description" content="Vocal Warmup — a private, local-first vocal training dashboard." />
+    <title>Vocal Warmup — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="global-decor" aria-hidden="true"><span class="shape star star-one">✦</span><span class="shape star star-two">✧</span><span class="shape blob blob-one"></span><span class="shape blob blob-two"></span><span class="shape ring"></span><span class="shape squiggle">〰</span></div>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <div><strong>Vocal</strong><strong>Warmup</strong></div>
+        </div>
+
+        <nav class="nav-list">
+          <button class="nav-item is-active" data-view="dashboard"><span class="nav-icon">⌘</span>Dashboard</button>
+          <button class="nav-item" data-view="practice"><span class="nav-icon">♩</span>Practice</button>
+          <button class="nav-item" data-view="routines"><span class="nav-icon">☷</span>Routines</button>
+          <button class="nav-item" data-view="analytics"><span class="nav-icon">▥</span>Analytics</button>
+          <button class="nav-item" data-view="achievements"><span class="nav-icon">♕</span>Achievements</button>
+          <button class="nav-item" data-view="songs"><span class="nav-icon">♫</span>Songs</button>
+        </nav>
+
+        <div class="nav-divider"></div>
+        <nav class="nav-list lower-nav">
+          <button class="nav-item" data-view="profile"><span class="nav-icon">◎</span>Profile</button>
+          <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Settings</button>
+        </nav>
+
+        <div class="privacy-card">
+          <div class="privacy-icon">♧</div>
+          <div><b>Privacy First<br />By Design</b><p>Your data. Your voice.<br />Always private.</p></div>
+        </div>
+        <div class="sidebar-footer"><span class="status-dot"></span> Local mode <span class="version">v0.8 beta</span></div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <button class="mobile-menu" aria-label="Open navigation">☰</button>
+          <div class="breadcrumb"><span>Workspace</span><span class="crumb-separator">/</span><b id="breadcrumb-view">Dashboard</b></div>
+          <div class="topbar-actions">
+            <button class="icon-button notification-button" aria-label="Notifications">♢<span></span></button>
+            <button class="profile-trigger" data-view="profile"><span class="mini-avatar">R</span><span class="profile-trigger-copy"><b>Ralskies</b><small>Local profile</small></span><span class="chevron">⌄</span></button>
+          </div>
+        </header>
+
+        <div class="page-wrap">
+          <div class="background-word" aria-hidden="true">SING<br />LOUD</div>
+          <section class="view is-visible" id="dashboard-view">
+            <div class="hero-row">
+              <div>
+                <p class="eyebrow">Wednesday, August 27, 2026 <span class="eyebrow-line"></span> Evening session</p>
+                <h1>Good evening, <span>Ralskies!</span> <span class="wave">👋</span></h1>
+                <p class="hero-subtitle">Ready to warm up your voice?</p>
+              </div>
+              <button class="primary-button" id="start-practice"><span>▶</span> Start Practice <kbd>⌘ ↵</kbd></button>
+            </div>
+
+            <div class="privacy-banner">
+              <span class="shield">♢</span><div><b>Local audio processing</b><small>Audio is analyzed on this device and never uploaded.</small></div><span class="live-dot"></span>
+              <button id="privacy-details">Details</button>
+            </div>
+
+            <div class="dashboard-grid">
+              <article class="card pitch-card">
+                <div class="card-heading"><div><p class="section-kicker">LIVE FEEDBACK <span class="pulse"></span></p><h2>Pitch Tracker</h2></div><button class="info-button" aria-label="Pitch tracker information">i</button></div>
+                <div class="pitch-summary"><div><strong id="pitch-note">C4</strong><span id="pitch-hz">261.6 Hz</span></div><div class="pitch-status"><span class="status-dot"></span> Listening</div></div>
+                <div class="gauge" aria-label="Pitch is eight cents sharp">
+                  <div class="gauge-ticks"></div><div class="gauge-needle"></div><div class="gauge-center"><strong id="pitch-cents">+8</strong><span>cents</span></div>
+                  <div class="gauge-label left">−50</div><div class="gauge-label mid">0</div><div class="gauge-label right">+50</div>
+                </div>
+                <div class="pitch-verdict" id="pitch-verdict">Slightly Sharp</div>
+                <div class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                <div class="pitch-tip"><span>◉</span> Try singing a comfortable “C4”</div>
+              </article>
+
+              <article class="card range-card">
+                <div class="card-heading"><div><p class="section-kicker">YOUR VOICE</p><h2>Vocal Range</h2></div><button class="more-button" aria-label="More range options">•••</button></div>
+                <div class="range-display"><span class="range-note top-left">G2</span><span class="range-note top-right">G4</span><div class="mini-piano" aria-label="Confirmed vocal range G2 to G4"><div class="white-keys"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="black-keys"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="range-fill"></div></div></div>
+                <div class="range-legend"><span><i class="legend-dot comfortable"></i> Comfortable Range</span><span><i class="legend-dot confirmed"></i> Confirmed Range</span></div>
+                <div class="range-meta"><span>Lowest: <b>G2</b> (98 Hz)</span><span>Range: <b>2 Octaves</b></span><span>Highest: <b>G4</b> (392 Hz)</span></div>
+              </article>
+
+              <article class="card routine-card">
+                <div class="card-heading"><div><p class="section-kicker">KEEP GOING</p><h2>Today's Routine</h2></div><span class="duration">◷ 30 min</span></div>
+                <div class="routine-list" id="routine-list">
+                  <label class="routine-item is-complete"><span class="routine-icon purple">♧</span><span><b>Breathing</b><small>3 min</small></span><input type="checkbox" checked /><i class="checkmark">✓</i></label>
+                  <label class="routine-item is-complete"><span class="routine-icon violet">≈</span><span><b>Lip Trills</b><small>5 min</small></span><input type="checkbox" checked /><i class="checkmark">✓</i></label>
+                  <label class="routine-item is-complete"><span class="routine-icon blue">♩</span><span><b>Humming</b><small>5 min</small></span><input type="checkbox" checked /><i class="checkmark">✓</i></label>
+                  <label class="routine-item"><span class="routine-icon pink">♬</span><span><b>Sirens</b><small>5 min</small></span><input type="checkbox" /><i class="checkmark">✓</i></label>
+                  <label class="routine-item"><span class="routine-icon magenta">♬</span><span><b>Scale Practice</b><small>7 min</small></span><input type="checkbox" /><i class="checkmark">✓</i></label>
+                  <label class="routine-item"><span class="routine-icon indigo">♧</span><span><b>Cool Down</b><small>5 min</small></span><input type="checkbox" /><i class="checkmark">✓</i></label>
+                </div>
+                <div class="routine-progress"><div><span id="routine-progress-label">18 / 30 min completed</span><span id="routine-progress-percent">60%</span></div><div class="progress-track"><span id="routine-progress-bar" style="width:60%"></span></div></div>
+              </article>
+
+              <article class="card progress-card">
+                <div class="card-heading"><div><p class="section-kicker">MOMENTUM</p><h2>Your Progress</h2></div><select aria-label="Progress timeframe"><option>This Week</option><option>This Month</option><option>All Time</option></select></div>
+                <div class="stat-row"><div class="stat"><span class="stat-icon purple">◷</span><small>Practice Time</small><strong>4h 32m</strong><em>+12% vs last week</em></div><div class="stat"><span class="stat-icon pink">▣</span><small>Sessions</small><strong>7</strong><em>+1 vs last week</em></div><div class="stat"><span class="stat-icon cyan">♢</span><small>Avg. Accuracy</small><strong>92%</strong><em>+8% vs last week</em></div></div>
+                <div class="chart-heading"><span>Time (min)</span><span>Goal: 5 sessions</span></div>
+                <div class="bar-chart" aria-label="Practice time for the last seven days"><div class="y-axis"><span>60</span><span>45</span><span>30</span><span>15</span><span>0</span></div><div class="bars"><div class="bar-column"><i style="height:62%"></i><span>Mon</span></div><div class="bar-column"><i style="height:47%"></i><span>Tue</span></div><div class="bar-column"><i style="height:78%"></i><span>Wed</span></div><div class="bar-column today"><i style="height:100%"></i><span>Thu</span></div><div class="bar-column"><i style="height:66%"></i><span>Fri</span></div><div class="bar-column"><i style="height:44%"></i><span>Sat</span></div><div class="bar-column"><i style="height:72%"></i><span>Sun</span></div></div></div>
+              </article>
+
+              <article class="card achievements-card">
+                <div class="card-heading"><div><p class="section-kicker">MILESTONES</p><h2>Achievements</h2></div><button class="text-button" data-view="achievements">View all <span>→</span></button></div>
+                <div class="achievement-list"><button class="achievement-badge badge-pink"><span>★</span><b>New Highest Note</b><small>G4</small></button><button class="achievement-badge badge-orange"><span>♨</span><b>10 Day Streak</b><small>Keep it up!</small></button><button class="achievement-badge badge-purple"><span>♜</span><b>25 Sessions</b><small>Practice champ</small></button></div>
+              </article>
+
+              <article class="card highlights-card">
+                <div class="card-heading"><div><p class="section-kicker">RECENT WINS</p><h2>Recent Highlights</h2></div><select aria-label="Highlights timeframe"><option>This Week</option><option>This Month</option></select></div>
+                <div class="highlight-list"><div class="highlight-item"><span class="highlight-icon orange">★</span><span><b>New Highest Note</b><strong>G4</strong><small>Today</small></span></div><div class="highlight-item"><span class="highlight-icon cyan">◎</span><span><b>Best Accuracy</b><strong>95%</strong><small>May 10</small></span></div><div class="highlight-item"><span class="highlight-icon purple">◷</span><span><b>Longest Session</b><strong>48 min</strong><small>May 9</small></span></div><div class="highlight-item"><span class="highlight-icon magenta">〽</span><span><b>Two Octave Range</b><strong>G2 – G4</strong><small>May 8</small></span></div></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="view" id="practice-view"><div class="page-title"><div><p class="eyebrow">PRACTICE STUDIO</p><h1>Make a little noise.</h1><p>Choose an exercise and let the local pitch engine guide you.</p></div><button class="primary-button" id="start-practice-alt">▶ Start Practice</button></div><div class="practice-layout"><div class="card practice-focus"><p class="section-kicker">NOW PLAYING</p><h2>Five Note Scale</h2><div class="target-note">E4 <small>Target note</small></div><div class="practice-line"><span></span><b>YOU</b><span></span></div><div class="practice-feedback"><strong>D♯4</strong><span>−18 cents</span><small>Pitch stability <i style="width:78%"></i></small></div><button class="outline-button" id="practice-start-button">Begin exercise <span>→</span></button></div><div class="card exercise-list"><div class="card-heading"><div><p class="section-kicker">EXERCISES</p><h2>Warmup library</h2></div><button class="text-button">Filter</button></div><button class="exercise-item is-selected"><span class="exercise-number">01</span><span><b>Five Note Scale</b><small>Build accuracy · 5 min</small></span><span>›</span></button><button class="exercise-item"><span class="exercise-number">02</span><span><b>Gentle Sirens</b><small>Explore range · 5 min</small></span><span>›</span></button><button class="exercise-item"><span class="exercise-number">03</span><span><b>Resonance Hums</b><small>Find your focus · 3 min</small></span><span>›</span></button><button class="exercise-item"><span class="exercise-number">04</span><span><b>Octave Slides</b><small>Warm the upper mix · 7 min</small></span><span>›</span></button></div></div></section>
+
+          <section class="view" id="routines-view"><div class="page-title"><div><p class="eyebrow">ROUTINE LIBRARY</p><h1>Your routines.</h1><p>Simple, repeatable practice for the voice you’re building.</p></div><button class="primary-button">＋ New Routine</button></div><div class="routine-grid"><div class="card routine-template featured-template"><span class="template-label">RECOMMENDED</span><h2>Today's Warmup</h2><p>Breathing, resonance, range and a gentle cool down.</p><strong>30 min · 6 exercises</strong><button class="outline-button">Practice routine →</button></div><div class="card routine-template"><span class="template-label blue-text">SINGING DAY</span><h2>Recording Day</h2><p>Wake up your placement without tiring the voice.</p><strong>18 min · 4 exercises</strong><button class="text-button">Open routine →</button></div><div class="card routine-template"><span class="template-label orange-text">RANGE</span><h2>High Note Prep</h2><p>A gradual climb toward your confirmed upper range.</p><strong>24 min · 5 exercises</strong><button class="text-button">Open routine →</button></div></div></section>
+
+          <section class="view" id="analytics-view"><div class="page-title"><div><p class="eyebrow">PROGRESS ANALYTICS</p><h1>See your voice grow.</h1><p>Your practice history stays on this device, where it belongs.</p></div><button class="date-button">Last 30 days⌄</button></div><div class="analytics-grid"><div class="card analytics-big"><div class="card-heading"><div><p class="section-kicker">PRACTICE TIME</p><h2>4h 32m <span class="positive">+12%</span></h2></div></div><div class="line-chart"><svg viewBox="0 0 800 230" preserveAspectRatio="none" role="img" aria-label="Practice time trend"><defs><linearGradient id="chart-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#a970ff" stop-opacity=".3"/><stop offset="1" stop-color="#a970ff" stop-opacity="0"/></linearGradient></defs><path class="fill" d="M0 190 C80 180 105 125 180 150 S260 120 330 142 S410 75 480 112 S560 105 630 84 S715 98 800 34 L800 230 L0 230Z"/><path class="line" d="M0 190 C80 180 105 125 180 150 S260 120 330 142 S410 75 480 112 S560 105 630 84 S715 98 800 34"/><circle cx="800" cy="34" r="6"/></svg><div class="chart-labels"><span>Aug 1</span><span>Aug 8</span><span>Aug 15</span><span>Aug 22</span><span>Today</span></div></div></div><div class="card range-progress"><p class="section-kicker">VOCAL RANGE</p><h2>G2 <span>→</span> G4</h2><div class="range-bar"><span></span></div><div class="range-progress-meta"><span>Confirmed range</span><b>2 octaves</b></div><button class="text-button">View range history →</button></div><div class="card analytics-stat"><p class="section-kicker">AVG ACCURACY</p><h2>92%</h2><div class="accuracy-ring"><span>+8%</span></div><small>Compared to your first week</small></div></div></section>
+
+          <section class="view" id="achievements-view"><div class="page-title"><div><p class="eyebrow">MILESTONES</p><h1>Small wins, stacked.</h1><p>Every session leaves a little evidence that you’re getting better.</p></div><div class="achievement-total"><strong>12</strong><span>earned</span></div></div><div class="achievement-wall"><div class="card wall-card earned"><span>★</span><h2>New Highest Note</h2><p>Confirmed a new top note.</p><b>G4 · Today</b></div><div class="card wall-card earned"><span>♨</span><h2>10 Day Streak</h2><p>Practiced ten days in a row.</p><b>Earned Aug 24</b></div><div class="card wall-card earned"><span>♜</span><h2>25 Sessions</h2><p>Showed up for your voice.</p><b>Earned Aug 18</b></div><div class="card wall-card locked"><span>◌</span><h2>3 Octave Range</h2><p>Keep exploring safely.</p><b>Locked · 1 octave to go</b></div></div></section>
+
+          <section class="view" id="songs-view"><div class="page-title"><div><p class="eyebrow">REPERTOIRE</p><h1>Songs you’re preparing.</h1><p>Connect warmups to the music you want to sing.</p></div><button class="primary-button">＋ Add Song</button></div><div class="card song-table"><div class="song-row song-header"><span>SONG</span><span>MY RANGE</span><span>STATUS</span><span></span></div><div class="song-row"><span><b>Breathin</b><small>Ariana Grande · Original key A minor</small></span><span>G2 – E4</span><em class="song-status comfortable">Comfortable</em><button>···</button></div><div class="song-row"><span><b>Brave</b><small>Sara Bareilles · Original key B♭ major</small></span><span>A2 – F4</span><em class="song-status learning">Learning</em><button>···</button></div><div class="song-row"><span><b>Fix You</b><small>Coldplay · Original key E♭ major</small></span><span>B2 – G4</span><em class="song-status challenge">Challenging</em><button>···</button></div></div></section>
+
+          <section class="view" id="profile-view"><div class="page-title"><div><p class="eyebrow">LOCAL SINGER PROFILE <span class="local-chip">● STORED ON DEVICE</span></p><h1>My voice, in one place.</h1><p>Share only what you choose. No account, no profile URL, no uploads.</p></div><button class="primary-button" id="share-profile-top">↗ Share Profile</button></div><div class="profile-grid"><div class="card profile-preview"><div class="profile-cover"><span>VOCAL WARMUP</span><i>✦</i></div><div class="profile-main"><div class="profile-avatar large">R</div><div><h2>Ralskies</h2><p>Soprano · Musical theatre / cover vocalist</p></div><button class="icon-button">•••</button></div><div class="profile-range"><div><small>CONFIRMED RANGE</small><strong>G2 – G4</strong><span>2 Octaves</span></div><div class="profile-mini-piano"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div class="profile-tags"><span>Strong mid-range</span><span>Developing upper mix</span><span>Musical theatre</span></div></div><div class="card profile-details"><div class="card-heading"><div><p class="section-kicker">PROFILE DETAILS</p><h2>What represents you</h2></div><button class="text-button" id="edit-profile">Edit profile</button></div><div class="detail-list"><div><span>Voice type</span><b>Soprano</b></div><div><span>Comfortable range</span><b>A2 – E4</b></div><div><span>Highest confirmed note</span><b>G4</b></div><div><span>Practice sessions</span><b>25</b></div><div><span>Current streak</span><b>10 days 🔥</b></div></div><div class="profile-share-note"><span>♢</span><p><b>Sharing is always your choice.</b><br />Generate a visual card locally, then decide where it goes.</p></div><button class="outline-button full-width" id="share-profile-bottom">Generate Singer Card <span>↗</span></button></div></div></section>
+
+          <section class="view" id="settings-view"><div class="page-title"><div><p class="eyebrow">SETTINGS</p><h1>Make it yours.</h1><p>Everything important stays on this device.</p></div></div><div class="settings-grid"><div class="card settings-card"><p class="section-kicker">PRIVACY</p><h2>Your audio never leaves.</h2><p>Vocal Warmup analyzes microphone input locally. Nothing is uploaded during normal practice.</p><button class="setting-row"><span><b>Local processing</b><small>Always on for practice</small></span><i class="toggle is-on"></i></button><button class="setting-row"><span><b>Microphone permission</b><small>Granted for this device</small></span><i class="toggle is-on"></i></button></div><div class="card settings-card"><p class="section-kicker">YOUR DATA</p><h2>Portable by design.</h2><p>Export a backup when you want to move your profile to another device.</p><button class="outline-button" id="export-data">Export local backup <span>↓</span></button><button class="text-button" id="clear-data">Clear local data</button></div></div></section>
+        </div>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="profile-modal" aria-hidden="true"><div class="modal profile-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-heading"><p class="eyebrow">LOCAL IMAGE GENERATOR</p><h2 id="modal-title">Share your singer profile</h2><p>Choose what to include. Your card is generated in this browser and never uploaded.</p></div><div class="generator-layout"><div class="card-card-preview"><div class="card-shine"></div><span class="generated-label">VOCAL WARMUP <i>✦</i></span><div class="generated-avatar">R</div><h3>Ralskies</h3><p>Soprano</p><div class="generated-range"><small>CONFIRMED RANGE</small><strong>G2 — G4</strong><div class="mini-line"><span></span></div></div><div class="generated-stats"><span><b>25</b><small>Sessions</small></span><span><b>10</b><small>Day streak</small></span><span><b>92%</b><small>Accuracy</small></span></div><footer>Private. Powerful. Personal.</footer></div><div class="generator-controls"><div class="control-heading"><b>Include on card</b><span>5 selected</span></div><label><span>Display name</span><input type="checkbox" checked /><i class="checkmark">✓</i></label><label><span>Voice type</span><input type="checkbox" checked /><i class="checkmark">✓</i></label><label><span>Confirmed range</span><input type="checkbox" checked /><i class="checkmark">✓</i></label><label><span>Achievements</span><input type="checkbox" checked /><i class="checkmark">✓</i></label><label><span>Practice stats <em>private by default</em></span><input type="checkbox" /><i class="checkmark">✓</i></label><div class="format-options"><span>Card format</span><button class="format-choice is-active">Square</button><button class="format-choice">Story</button></div><button class="primary-button full-width" id="download-card">Download PNG <span>↓</span></button><button class="text-button full-width" data-close-modal>Cancel</button></div></div></div></div>
+    <div class="modal-backdrop" id="practice-modal" aria-hidden="true"><div class="modal practice-modal" role="dialog" aria-modal="true"><button class="modal-close" data-close-modal aria-label="Close">×</button><p class="eyebrow">QUICK WARMUP · 05:00</p><h2>Find your center.</h2><p>Sing along with the note and watch your pitch settle into the pocket.</p><div class="modal-note">E4<small>Target note</small></div><div class="modal-meter"><span></span><b>Listening…</b></div><button class="primary-button full-width" data-close-modal>Finish warmup</button></div></div>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
