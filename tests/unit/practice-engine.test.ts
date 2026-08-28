@@ -79,6 +79,18 @@ describe("PracticeEngine", () => {
     vi.useRealTimers();
   });
 
+  it("allows pitch-hold exercises to configure acceptance independently of tuner labels", () => {
+    vi.useFakeTimers();
+    const configuredExercise: Exercise = { ...pitchHoldExercise, id: "strict-pitch-hold", pitchHoldToleranceCents: 15 };
+    const configuredRoutine = { ...routine, exerciseItems: [{ ...routine.exerciseItems[0], exerciseId: configuredExercise.id }] };
+    const engine = new PracticeEngine({ routine: configuredRoutine, exercises: [...testExercises, configuredExercise], tickMs: 50 });
+    enterSingPhase(engine);
+    feed(engine, offsetFrame(20), 20);
+    expect(engine.snapshot.successfulHoldMs).toBe(0);
+    engine.stop();
+    vi.useRealTimers();
+  });
+
   it("requires a short run of stable frames before starting hold", () => {
     vi.useFakeTimers();
     const engine = new PracticeEngine({ routine, exercises: testExercises, tickMs: 50 });

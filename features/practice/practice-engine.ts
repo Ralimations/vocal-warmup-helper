@@ -171,7 +171,8 @@ export class PracticeEngine {
     }
 
     const deviation = centsFromTarget(frame.frequency, target.frequency);
-    const withinSuccessZone = Math.abs(deviation) <= SUCCESS_THRESHOLD_CENTS;
+    const holdTolerance = this.session.currentExercise.pitchHoldToleranceCents ?? SUCCESS_THRESHOLD_CENTS;
+    const withinSuccessZone = Math.abs(deviation) <= holdTolerance;
     if (withinSuccessZone) {
       if (this.lastVoicedFrequency !== null && Math.abs(centsFromTarget(frame.frequency, this.lastVoicedFrequency)) > MAX_STABLE_FREQUENCY_DELTA_CENTS) this.stableTargetFrames = 0;
       this.stableTargetFrames += 1;
