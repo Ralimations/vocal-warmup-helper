@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { exercises } from "@/data/exercises";
 import { routineTemplates } from "@/data/routine-templates";
 import { AudioEngine, type AudioObservation } from "@/features/audio/audio-engine";
+import { initialAudioDiagnostics, type AudioDiagnostics } from "@/features/audio/audio-diagnostics";
 import { ReferenceTonePlayer } from "@/features/audio/reference-tone-player";
 import { PracticeEngine, type ActivePracticeSession } from "@/features/practice/practice-engine";
 import { calculatePitchStability, centsFromTarget, getPitchInputState, getPracticeSignalState, getSuccessfulHoldProgress, getTunerState, isUsablePitchFrame, PITCH_TRAIL_WINDOW_MS, smoothPitchFrame, STALE_PITCH_TIMEOUT_MS, trimPitchHistory, trimPitchTrail, type PitchHistoryPoint, type PitchInputState, type PitchObservation } from "@/features/practice/pitch-feedback";
 import { usePracticeStore } from "@/stores/practice-store";
 import { PitchMeter } from "@/components/practice/pitch-meter";
+import { DiagnosticsPanel } from "@/components/practice/diagnostics-panel";
 import type { PitchFrame } from "@/types/domain";
 
 function formatTime(milliseconds: number): string {
@@ -23,6 +25,14 @@ function formatSeconds(milliseconds: number): string {
 function formatOffset(cents: number | null): string {
   if (cents === null || !Number.isFinite(cents)) return "—";
   return `${cents > 0 ? "+" : ""}${Math.round(cents)}`;
+}
+
+function formatAudioError(cause: unknown): string {
+  const name = typeof cause === "object" && cause !== null && "name" in cause ? String(cause.name) : "";
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") return "Microphone permission was denied. Allow microphone access and try again.";
+  if (name === "NotFoundError" || name === "DevicesNotFoundError") return "No microphone was found. Connect a microphone and try again.";
+  if (cause instanceof Error) return cause.message;
+  return "Microphone audio could not be started in this browser.";
 }
 
 interface VisualState {
@@ -52,6 +62,8 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
   const [snapshot, setSnapshot] = useState<ActivePracticeSession>(() => new PracticeEngine({ routine, exercises }).snapshot);
   const [visual, setVisual] = useState<VisualState>(initialVisualState);
   const [error, setError] = useState("");
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [audioDiagnostics, setAudioDiagnostics] = useState<AudioDiagnostics>(initialAudioDiagnostics);
   const [guideToneOn, setGuideToneOn] = useState(true);
   const [guideVolume, setGuideVolume] = useState(0.18);
   const setDetectedPitch = usePracticeStore((state) => state.setDetectedPitch);
@@ -109,8 +121,9 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
     publishVisual();
   }, [snapshot.status]);
 
-  const handleAudioObservation = ({ frame, soundDetected }: AudioObservation, engine: PracticeEngine) => {
+  const handleAudioObservation = ({ frame, soundDetected, diagnostics }: AudioObservation, engine: PracticeEngine) => {
     if (engine.snapshot.status !== "active") return;
+    setAudioDiagnostics(diagnostics);
     const inputState = getPitchInputState(frame);
     const signalState = getPracticeSignalState(soundDetected, frame);
     const usable = frame !== null && isUsablePitchFrame(frame);
@@ -162,11 +175,15 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
       engine.start();
       const audio = new AudioEngine();
       audioRef.current = audio;
+      setAudioDiagnostics(audio.getDiagnostics());
       await audio.start((observation) => handleAudioObservation(observation, engine));
+      setAudioDiagnostics(audio.getDiagnostics());
       setVisualVoiceState("Listening...", "No voice detected");
     } catch (cause) {
+      setAudioDiagnostics(audioRef.current?.getDiagnostics() ?? initialAudioDiagnostics);
       audioRef.current?.stop();
       audioRef.current = null;
+      setError(formatAudioError(cause));
       if (pitchOptional) {
         setVisualVoiceState("In progress", "No voice detected");
       } else {
@@ -285,9 +302,14 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
     <div className="practice-backdrop" role="dialog" aria-modal="true" aria-labelledby="practice-title">
       <section className="practice-panel">
         <button type="button" className="practice-close" onClick={stop} aria-label="Close practice">×</button>
-        <p className="muted">{routine.name} · Exercise {snapshot.currentExerciseIndex + 1} of {routine.exerciseItems.length}</p>
+        <div className="practice-topline">
+          <p className="muted">{routine.name} · Exercise {snapshot.currentExerciseIndex + 1} of {routine.exerciseItems.length}</p>
+          <button type="button" className="diagnostics-button" onClick={() => setDiagnosticsOpen((open) => !open)}>{diagnosticsOpen ? "Hide diagnostics" : "Diagnostics"}</button>
+        </div>
         <h2 id="practice-title">{isComplete ? "Warmup complete" : snapshot.currentExercise.name}</h2>
         <p>{isComplete ? "The session summary is available below." : snapshot.currentExercise.instructions}</p>
+
+        {diagnosticsOpen && <DiagnosticsPanel diagnostics={audioDiagnostics} onClose={() => setDiagnosticsOpen(false)} />}
 
         {isPitchExercise && <>
           <div className="practice-targets" aria-label="Target note sequence">

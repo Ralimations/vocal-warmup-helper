@@ -24,6 +24,10 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .base-panel { display: grid; gap: 16px; padding: 24px; border: 1px solid #d4d4d4; border-radius: 8px; background: #fff; }
 .base-panel p { margin: 0; line-height: 1.5; }
 .muted { color: #737373; font-size: 13px; }
+.tester-guidance { display: grid; gap: 6px; padding-top: 4px; color: #525252; font-size: 13px; }
+.tester-guidance strong { color: #171717; }
+.tester-guidance ul { margin: 0; padding-left: 20px; line-height: 1.5; }
+.app-footer { display: flex; justify-content: space-between; gap: 16px; max-width: 960px; margin: 0 auto; padding: 16px 24px 24px; color: #737373; font-size: 12px; }
 .primary-button, .secondary-button { display: inline-flex; align-items: center; justify-content: center; width: fit-content; min-height: 40px; padding: 8px 16px; border: 1px solid #171717; border-radius: 4px; cursor: pointer; font-weight: 700; text-decoration: none; }
 .primary-button { color: #fff; background: #171717; }
 .secondary-button { color: #171717; background: #fff; }
@@ -32,7 +36,21 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .practice-panel { position: relative; width: min(760px, 100%); margin: 0 auto; padding: 24px; border: 1px solid #d4d4d4; border-radius: 8px; background: #fff; }
 .practice-panel h2 { margin: 8px 48px 8px 0; font-size: 24px; }
 .practice-panel p { line-height: 1.5; }
+.practice-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-right: 42px; }
+.practice-topline p { margin: 0; }
+.diagnostics-button { min-height: 30px; padding: 4px 8px; border: 1px solid #a3a3a3; border-radius: 4px; background: #fff; color: #525252; cursor: pointer; font-size: 12px; }
 .practice-close { position: absolute; top: 16px; right: 16px; min-width: 32px; min-height: 32px; border: 1px solid #a3a3a3; border-radius: 4px; background: #fff; cursor: pointer; }
+.practice-diagnostics { display: grid; gap: 12px; margin: 16px 0; padding: 12px; border: 1px solid #a3a3a3; border-radius: 6px; background: #fafafa; }
+.practice-diagnostics-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.practice-diagnostics-heading strong { font-size: 15px; }
+.practice-diagnostics-heading p { margin: 4px 0 0; }
+.practice-diagnostics-heading button, .practice-diagnostics-actions button { min-height: 36px; padding: 6px 10px; border: 1px solid #171717; border-radius: 4px; background: #fff; cursor: pointer; font-size: 12px; font-weight: 700; }
+.practice-diagnostics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; }
+.practice-diagnostics-grid div { min-width: 0; }
+.practice-diagnostics-grid dt { color: #737373; font-size: 11px; }
+.practice-diagnostics-grid dd { margin: 2px 0 0; overflow-wrap: anywhere; font-size: 12px; }
+.practice-diagnostics-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.practice-diagnostics-actions span { font-size: 12px; }
 .practice-meta, .practice-status, .practice-targets, .practice-summary { padding: 12px; border: 1px solid #d4d4d4; border-radius: 4px; }
 .practice-meta { display: flex; justify-content: space-between; gap: 16px; color: #525252; font-size: 13px; }
 .practice-targets { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -96,6 +114,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .practice-error { color: #b91c1c; font-size: 13px; }
 @media (max-width: 560px) {
   .app-header { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .app-footer { align-items: flex-start; flex-direction: column; gap: 4px; padding-right: 16px; padding-left: 16px; }
   .app-content { padding-top: 40px; }
   .practice-backdrop { padding: 12px; }
   .practice-panel { padding: 16px; }
@@ -104,4 +123,6 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   .pitch-history-graph, .pitch-trail { min-height: 240px; height: 240px; }
   .practice-stats { grid-template-columns: 1fr; }
   .practice-summary { grid-template-columns: 1fr; }
+  .practice-topline { align-items: flex-start; flex-direction: column; padding-right: 42px; }
+  .practice-diagnostics-grid { grid-template-columns: 1fr; }
 }
