@@ -14,6 +14,9 @@ export interface PitchScore {
   lowestMidi?: number;
 }
 
+export const MIN_PITCH_CONFIDENCE = 0.35;
+export const MIN_PITCH_AMPLITUDE = 0.005;
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 export function scorePitchFrames(samples: TimedPitchFrame[], targets: TargetNote[], toleranceCents = 50): PitchScore {
@@ -21,8 +24,8 @@ export function scorePitchFrames(samples: TimedPitchFrame[], targets: TargetNote
   const detectedMidis: number[] = [];
 
   for (const sample of samples) {
-    if (sample.frame.confidence < 0.5 || sample.frame.amplitude < 0.01) continue;
-    const target = targets.find((candidate) => sample.elapsedMs >= candidate.startMs && sample.elapsedMs < candidate.endMs);
+    if (sample.frame.confidence < MIN_PITCH_CONFIDENCE || sample.frame.amplitude < MIN_PITCH_AMPLITUDE) continue;
+    const target = targets.find((candidate) => sample.elapsedMs >= candidate.singStartMs && sample.elapsedMs < candidate.singEndMs);
     if (!target) continue;
     deviations.push(Math.abs((sample.frame.midiNumber - target.midi) * 100));
     detectedMidis.push(sample.frame.midiNumber);

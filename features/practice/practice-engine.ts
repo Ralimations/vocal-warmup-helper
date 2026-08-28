@@ -1,4 +1,4 @@
-import { buildTargetNotes, type TargetNote } from "@/features/practice/target-note-sequence";
+import { buildTargetNotes, type TargetNote, type TargetNotePhase } from "@/features/practice/target-note-sequence";
 import { scorePitchFrames, type PitchScore, type TimedPitchFrame } from "@/features/practice/pitch-scoring";
 import { midiToNote } from "@/features/audio/note-converter";
 import type { Exercise, PitchFrame, PracticeStatus, Routine, RoutineExercise } from "@/types/domain";
@@ -21,6 +21,7 @@ export interface PracticeSessionSummary {
   averageCentsError: number;
   highestDetectedNote?: string;
   lowestDetectedNote?: string;
+  validFrameCount: number;
 }
 
 export interface ActivePracticeSession {
@@ -34,6 +35,8 @@ export interface ActivePracticeSession {
   currentRoutineExercise: RoutineExercise;
   targetNotes: TargetNote[];
   currentTargetNote?: TargetNote;
+  currentTargetIndex: number;
+  phase: TargetNotePhase | "idle";
   exercises: ExercisePracticeState[];
   summary?: PracticeSessionSummary;
   error?: string;
@@ -109,6 +112,20 @@ export class PracticeEngine {
     return this.emit();
   }
 
+  previousNote(): ActivePracticeSession {
+    const index = this.targetIndex();
+    if (index <= 0) return this.session;
+    this.session = { ...this.session, exerciseElapsedMs: this.session.targetNotes[index - 1].prepareStartMs };
+    return this.emit();
+  }
+
+  nextNote(): ActivePracticeSession {
+    const index = this.targetIndex();
+    if (index < 0 || index >= this.session.targetNotes.length - 1) return this.next();
+    this.session = { ...this.session, exerciseElapsedMs: this.session.targetNotes[index + 1].prepareStartMs };
+    return this.emit();
+  }
+
   stop(): PracticeSessionSummary | undefined {
     this.clearTimer();
     const summary = this.makeSummary();
@@ -129,9 +146,9 @@ export class PracticeEngine {
 
   addPitchFrame(frame: PitchFrame): void {
     if (this.session.status !== "active") return;
-    if (frame.confidence < 0.5 || frame.amplitude < 0.01) return;
+    if (frame.confidence < 0.35 || frame.amplitude < 0.005) return;
     const currentSamples = this.samplesByExercise[this.session.currentExerciseIndex];
-    const target = this.session.targetNotes.find((candidate) => this.session.exerciseElapsedMs >= candidate.startMs && this.session.exerciseElapsedMs < candidate.endMs);
+    const target = this.session.targetNotes.find((candidate) => this.session.exerciseElapsedMs >= candidate.singStartMs && this.session.exerciseElapsedMs < candidate.singEndMs);
     if (!target) return;
     currentSamples.push({ frame, elapsedMs: this.session.exerciseElapsedMs });
     this.session = { ...this.session, exercises: this.session.exercises.map((exercise, index) => index === this.session.currentExerciseIndex ? { ...exercise, score: scorePitchFrames(currentSamples, exercise.targetNotes, this.pitchTolerance) } : exercise) };
@@ -169,7 +186,7 @@ export class PracticeEngine {
     const exercise = this.exerciseMap.get(item?.exerciseId);
     if (!item || !exercise) throw new Error("Routine contains an unknown exercise.");
     const targetNotes = buildTargetNotes(exercise, item, this.tuning);
-    return { status, routineId: this.routine.id, currentExerciseIndex: index, elapsedMs: 0, exerciseElapsedMs: 0, currentExercise: exercise, currentRoutineExercise: item, targetNotes, currentTargetNote: targetNotes[0], exercises: this.routine.exerciseItems.map((routineItem) => ({ exerciseId: routineItem.exerciseId, exerciseElapsedMs: 0, targetNotes: buildTargetNotes(this.exerciseMap.get(routineItem.exerciseId)!, routineItem, this.tuning), score: { accuracy: 0, averageCentsError: 0, validFrameCount: 0 } })) };
+    return { status, routineId: this.routine.id, currentExerciseIndex: index, elapsedMs: 0, exerciseElapsedMs: 0, currentExercise: exercise, currentRoutineExercise: item, targetNotes, currentTargetNote: targetNotes[0], currentTargetIndex: targetNotes.length ? 0 : -1, phase: "idle", exercises: this.routine.exerciseItems.map((routineItem) => ({ exerciseId: routineItem.exerciseId, exerciseElapsedMs: 0, targetNotes: buildTargetNotes(this.exerciseMap.get(routineItem.exerciseId)!, routineItem, this.tuning), score: { accuracy: 0, averageCentsError: 0, validFrameCount: 0 } })) };
   }
 
   private makeSummary(): PracticeSessionSummary {
@@ -180,9 +197,10 @@ export class PracticeEngine {
     const allMidis = scored.flatMap((score) => [score.highestMidi, score.lowestMidi]).filter((midi): midi is number => midi !== undefined);
     const highest = allMidis.length ? midiToNote(Math.max(...allMidis)) : undefined;
     const lowest = allMidis.length ? midiToNote(Math.min(...allMidis)) : undefined;
-    return { routineId: this.routine.id, startedAt: this.session.startedAt ?? new Date().toISOString(), completedAt: new Date().toISOString(), durationSeconds: Math.round(this.session.elapsedMs / 1000), completedExercises: this.session.status === "complete" ? this.routine.exerciseItems.length : this.session.currentExerciseIndex, totalExercises: this.routine.exerciseItems.length, averagePitchAccuracy, averageCentsError, highestDetectedNote: highest ? `${highest.noteName}${highest.octave}` : undefined, lowestDetectedNote: lowest ? `${lowest.noteName}${lowest.octave}` : undefined };
+    return { routineId: this.routine.id, startedAt: this.session.startedAt ?? new Date().toISOString(), completedAt: new Date().toISOString(), durationSeconds: Math.round(this.session.elapsedMs / 1000), completedExercises: this.session.status === "complete" ? this.routine.exerciseItems.length : this.session.currentExerciseIndex, totalExercises: this.routine.exerciseItems.length, averagePitchAccuracy, averageCentsError, highestDetectedNote: highest ? `${highest.noteName}${highest.octave}` : undefined, lowestDetectedNote: lowest ? `${lowest.noteName}${lowest.octave}` : undefined, validFrameCount: scored.reduce((total, score) => total + score.validFrameCount, 0) };
   }
 
   private clearTimer(): void { if (this.timer !== null) clearInterval(this.timer); this.timer = null; }
-  private emit(): ActivePracticeSession { this.session = { ...this.session, currentTargetNote: this.session.targetNotes.find((target) => this.session.exerciseElapsedMs >= target.startMs && this.session.exerciseElapsedMs < target.endMs) }; this.onChange?.(this.session); return this.session; }
+  private emit(): ActivePracticeSession { const currentTargetIndex = this.targetIndex(); const currentTargetNote = currentTargetIndex >= 0 ? this.session.targetNotes[currentTargetIndex] : undefined; const phase: TargetNotePhase | "idle" = !currentTargetNote || this.session.status === "idle" || this.session.status === "complete" ? "idle" : this.session.exerciseElapsedMs < currentTargetNote.referenceStartMs ? "prepare" : this.session.exerciseElapsedMs < currentTargetNote.singStartMs ? "reference" : this.session.exerciseElapsedMs < currentTargetNote.singEndMs ? "sing" : this.session.exerciseElapsedMs < currentTargetNote.transitionStartMs ? "evaluate" : "transition"; this.session = { ...this.session, currentTargetIndex, currentTargetNote, phase }; this.onChange?.(this.session); return this.session; }
+  private targetIndex(): number { return this.session.targetNotes.findIndex((target) => this.session.exerciseElapsedMs >= target.prepareStartMs && this.session.exerciseElapsedMs < target.endMs); }
 }

@@ -45,12 +45,34 @@ describe("PracticeEngine", () => {
     vi.useRealTimers();
   });
 
-  it("aggregates pitch deviation into a session summary", () => {
-    const engine = new PracticeEngine({ routine, exercises });
+  it("advances through prepare, reference, sing, evaluate, and transition phases", () => {
+    vi.useFakeTimers();
+    const phaseRoutine = { ...routine, exerciseItems: [{ ...routine.exerciseItems[0], duration: 5 }] };
+    const engine = new PracticeEngine({ routine: phaseRoutine, exercises, tickMs: 50 });
     engine.start();
+    expect(engine.snapshot.phase).toBe("prepare");
+    vi.advanceTimersByTime(650);
+    expect(engine.snapshot.phase).toBe("reference");
+    vi.advanceTimersByTime(700);
+    expect(engine.snapshot.phase).toBe("sing");
+    vi.advanceTimersByTime(2000);
+    expect(engine.snapshot.phase).toBe("evaluate");
+    vi.advanceTimersByTime(300);
+    expect(engine.snapshot.phase).toBe("transition");
+    engine.stop();
+    vi.useRealTimers();
+  });
+
+  it("aggregates pitch deviation into a session summary", () => {
+    const scoringRoutine = { ...routine, exerciseItems: [{ ...routine.exerciseItems[0], duration: 5 }] };
+    const engine = new PracticeEngine({ routine: scoringRoutine, exercises });
+    vi.useFakeTimers();
+    engine.start();
+    vi.advanceTimersByTime(1400);
     engine.addPitchFrame(frame(60));
     engine.addPitchFrame(frame(60.1));
     const completed = engine.complete();
+    vi.useRealTimers();
 
     expect(completed.summary?.averagePitchAccuracy).toBeGreaterThan(70);
     expect(completed.summary?.averageCentsError).toBeGreaterThan(0);

@@ -7,7 +7,7 @@ export class YinPitchDetector implements IPitchDetector {
   constructor(private readonly threshold = .14) {}
   detect(samples: Float32Array, sampleRate: number): PitchDetectionResult | null {
     let amplitude = 0; for (const sample of samples) amplitude += sample * sample; amplitude = Math.sqrt(amplitude / samples.length);
-    if (amplitude < .01) return null;
+    if (amplitude < .005) return null;
     const size = Math.floor(samples.length / 2); const difference = new Float32Array(size);
     for (let tau = 1; tau < size; tau++) { let sum = 0; for (let i = 0; i < size; i++) { const delta = samples[i] - samples[i + tau]; sum += delta * delta; } difference[tau] = sum; }
     const normalized = new Float32Array(size); let running = 0; normalized[0] = 1;
