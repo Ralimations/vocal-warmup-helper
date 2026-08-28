@@ -10,6 +10,7 @@ interface PitchMeterProps {
   nowMs: number;
   target?: TargetNote;
   showTuner?: boolean;
+  informational?: boolean;
 }
 
 function formatOffset(cents: number | null): string {
@@ -17,7 +18,7 @@ function formatOffset(cents: number | null): string {
   return `${cents > 0 ? "+" : ""}${Math.round(cents)}`;
 }
 
-function PitchMeterView({ cents, history, nowMs, target, showTuner = true }: PitchMeterProps) {
+function PitchMeterView({ cents, history, nowMs, target, showTuner = true, informational = false }: PitchMeterProps) {
   const state: TunerState = getTunerState(cents);
   const marker = centsToMeterPercent(cents);
   const labels = getPitchAxisLabels(history, target?.midi);
@@ -54,7 +55,10 @@ function PitchMeterView({ cents, history, nowMs, target, showTuner = true }: Pit
           <span className="meter-label meter-label-right">+50</span>
         </div>
       </>}
-      <div className="pitch-trail-heading"><span>Recent Pitch · last 5 sec</span><span>Detected notes</span></div>
+      <div className="pitch-trail-heading">
+        <span>{informational ? "Approximate Pitch · informational · last 5 sec" : "Recent Pitch · last 5 sec"}</span>
+        <span>Detected notes</span>
+      </div>
       <div className="pitch-history-graph">
         <div className="pitch-axis" aria-hidden="true">
           {labels.map((label) => <span key={`${label.note}-${label.midi}`} style={{ top: `${label.percent}%` }}>{label.note}</span>)}

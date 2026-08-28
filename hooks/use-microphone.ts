@@ -16,7 +16,7 @@ export function useMicrophone() {
     engine.current = nextEngine;
 
     try {
-      await nextEngine.start(setDetectedPitch);
+      await nextEngine.start((observation) => setDetectedPitch(observation.frame));
       setMicrophoneStatus("active");
     } catch (error) {
       nextEngine.stop();

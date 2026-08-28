@@ -1,14 +1,21 @@
 import { frequencyToPitchFrame } from "@/features/audio/note-converter";
 import { MicrophoneManager } from "@/features/audio/microphone-manager";
-import { YinPitchDetector } from "@/features/audio/pitch-detector";
+import { calculateRms, SoundActivityTracker, YinPitchDetector } from "@/features/audio/pitch-detector";
 import type { PitchFrame } from "@/types/domain";
 
+export interface AudioObservation {
+  frame: PitchFrame | null;
+  soundDetected: boolean;
+  amplitude: number;
+}
+
 export class AudioEngine {
-  private readonly microphone = new MicrophoneManager(); private readonly detector = new YinPitchDetector(); private frameId: number | null = null; private worklet: AudioWorkletNode | null = null; private workletSink: GainNode | null = null;
-  async start(onPitch: (frame: PitchFrame | null) => void): Promise<void> {
+  private readonly microphone = new MicrophoneManager(); private readonly detector = new YinPitchDetector(); private readonly activity = new SoundActivityTracker(); private frameId: number | null = null; private worklet: AudioWorkletNode | null = null; private workletSink: GainNode | null = null;
+  async start(onObservation: (observation: AudioObservation) => void): Promise<void> {
     if (this.frameId !== null || this.worklet !== null) throw new Error("Audio engine is already running.");
+    this.activity.reset();
     const { analyser, context, source } = await this.microphone.start();
-    const processSamples = (samples: Float32Array, timestamp: number) => { const result = this.detector.detect(samples, context.sampleRate); onPitch(result ? frequencyToPitchFrame(result.frequency, result.confidence, result.amplitude, timestamp) : null); };
+    const processSamples = (samples: Float32Array, timestamp: number) => { const amplitude = calculateRms(samples); const result = this.detector.detect(samples, context.sampleRate); onObservation({ frame: result ? frequencyToPitchFrame(result.frequency, result.confidence, result.amplitude, timestamp) : null, soundDetected: this.activity.update(amplitude), amplitude }); };
     if (context.audioWorklet && typeof AudioWorkletNode !== "undefined") {
       try {
         await context.audioWorklet.addModule("/worklets/pitch.worklet.js");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MIN_STABLE_VOICED_FRAMES, YinPitchDetector } from "@/features/audio/pitch-detector";
+import { MIN_STABLE_VOICED_FRAMES, MIN_STABLE_SOUND_FRAMES, SOUND_RELEASE_FRAMES, SoundActivityTracker, YinPitchDetector } from "@/features/audio/pitch-detector";
 
 describe("YIN pitch detector", () => {
   it("detects a clean sine wave near A4", () => {
@@ -41,5 +41,14 @@ describe("YIN pitch detector", () => {
 
     for (let index = 0; index < MIN_STABLE_VOICED_FRAMES - 1; index += 1) expect(detector.detect(samples, 44100)).toBeNull();
     expect(detector.detect(samples, 44100)).not.toBeNull();
+  });
+
+  it("keeps sound activity separate from pitch availability", () => {
+    const tracker = new SoundActivityTracker();
+    for (let index = 0; index < MIN_STABLE_SOUND_FRAMES - 1; index += 1) expect(tracker.update(0.05)).toBe(false);
+    expect(tracker.update(0.05)).toBe(true);
+    expect(tracker.update(0)).toBe(true);
+    for (let index = 0; index < SOUND_RELEASE_FRAMES - 2; index += 1) expect(tracker.update(0)).toBe(true);
+    expect(tracker.update(0)).toBe(false);
   });
 });

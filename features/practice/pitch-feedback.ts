@@ -15,6 +15,12 @@ export const PITCH_STABILITY_MAX_DEVIATION_CENTS = 35;
 export type TunerState = "NO SIGNAL" | "CENTERED" | "IN TUNE" | "SLIGHTLY FLAT" | "SLIGHTLY SHARP" | "FLAT" | "SHARP";
 export type PitchInputState = "No voice detected" | "Too quiet" | "Pitch uncertain" | "Detected";
 
+export interface PracticeSignalState {
+  soundDetected: boolean;
+  pitchDetected: boolean;
+  label: "No voice detected" | "Sound detected · Pitch unavailable" | "Pitch detected";
+}
+
 export interface PitchObservation {
   timestamp: number;
   cents: number;
@@ -58,6 +64,15 @@ export function getPitchInputState(frame: PitchFrame | null): PitchInputState {
   if (frame.amplitude < PITCH_MIN_AMPLITUDE) return "Too quiet";
   if (frame.confidence < PITCH_MIN_CONFIDENCE) return "Pitch uncertain";
   return "Detected";
+}
+
+export function getPracticeSignalState(soundDetected: boolean, frame: PitchFrame | null): PracticeSignalState {
+  const pitchDetected = frame !== null && isUsablePitchFrame(frame);
+  return {
+    soundDetected,
+    pitchDetected,
+    label: !soundDetected ? "No voice detected" : pitchDetected ? "Pitch detected" : "Sound detected · Pitch unavailable",
+  };
 }
 
 export function centsFromTarget(frequency: number, targetFrequency: number): number {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculatePitchStability, centsToMeterPercent, getPitchAxisLabels, getPitchInputState, getSuccessfulHoldProgress, getTunerState, isPitchStale, trimPitchHistory, trimPitchTrail, type PitchHistoryPoint, type PitchObservation } from "@/features/practice/pitch-feedback";
+import { calculatePitchStability, centsToMeterPercent, getPitchAxisLabels, getPitchInputState, getPracticeSignalState, getSuccessfulHoldProgress, getTunerState, isPitchStale, trimPitchHistory, trimPitchTrail, type PitchHistoryPoint, type PitchObservation } from "@/features/practice/pitch-feedback";
 import { exercises } from "@/data/exercises";
 import { buildTargetNotes } from "@/features/practice/target-note-sequence";
 
@@ -73,5 +73,12 @@ describe("pitch feedback", () => {
     expect(isPitchStale(100, 800)).toBe(true);
     expect(getPitchInputState(null)).toBe("No voice detected");
     expect(getPitchInputState({ timestamp: 0, frequency: 1, midiNumber: 0, noteName: "C", octave: 0, cents: 0, confidence: 0.9, amplitude: 0.001 })).toBe("Too quiet");
+  });
+
+  it("distinguishes sustained sound from a detected pitch", () => {
+    const frame = { timestamp: 0, frequency: 440, midiNumber: 69, noteName: "A" as const, octave: 4, cents: 0, confidence: 0.9, amplitude: 0.1 };
+    expect(getPracticeSignalState(true, null)).toEqual({ soundDetected: true, pitchDetected: false, label: "Sound detected · Pitch unavailable" });
+    expect(getPracticeSignalState(false, null)).toEqual({ soundDetected: false, pitchDetected: false, label: "No voice detected" });
+    expect(getPracticeSignalState(true, frame)).toEqual({ soundDetected: true, pitchDetected: true, label: "Pitch detected" });
   });
 });

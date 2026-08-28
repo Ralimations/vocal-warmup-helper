@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { exercises } from "@/data/exercises";
 import { routineTemplates } from "@/data/routine-templates";
-import { AudioEngine } from "@/features/audio/audio-engine";
+import { AudioEngine, type AudioObservation } from "@/features/audio/audio-engine";
 import { ReferenceTonePlayer } from "@/features/audio/reference-tone-player";
 import { PracticeEngine, type ActivePracticeSession } from "@/features/practice/practice-engine";
-import { calculatePitchStability, centsFromTarget, getPitchInputState, getSuccessfulHoldProgress, getTunerState, isUsablePitchFrame, PITCH_TRAIL_WINDOW_MS, smoothPitchFrame, STALE_PITCH_TIMEOUT_MS, trimPitchHistory, trimPitchTrail, type PitchHistoryPoint, type PitchInputState, type PitchObservation } from "@/features/practice/pitch-feedback";
+import { calculatePitchStability, centsFromTarget, getPitchInputState, getPracticeSignalState, getSuccessfulHoldProgress, getTunerState, isUsablePitchFrame, PITCH_TRAIL_WINDOW_MS, smoothPitchFrame, STALE_PITCH_TIMEOUT_MS, trimPitchHistory, trimPitchTrail, type PitchHistoryPoint, type PitchInputState, type PitchObservation } from "@/features/practice/pitch-feedback";
 import { usePracticeStore } from "@/stores/practice-store";
 import { PitchMeter } from "@/components/practice/pitch-meter";
 import type { PitchFrame } from "@/types/domain";
@@ -34,9 +34,11 @@ interface VisualState {
   stability: number;
   stabilityObservations: PitchObservation[];
   voiceState: string;
+  soundDetected: boolean;
+  pitchDetected: boolean;
 }
 
-const initialVisualState: VisualState = { cents: null, history: [], inputState: "No voice detected", nowMs: 0, pitch: null, stability: 0, stabilityObservations: [], voiceState: "No voice detected" };
+const initialVisualState: VisualState = { cents: null, history: [], inputState: "No voice detected", nowMs: 0, pitch: null, stability: 0, stabilityObservations: [], voiceState: "No voice detected", soundDetected: false, pitchDetected: false };
 
 export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
   const routine = routineTemplates[1];
@@ -70,7 +72,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
   const armStalePitchTimer = () => {
     if (staleTimerRef.current !== null) clearTimeout(staleTimerRef.current);
     staleTimerRef.current = setTimeout(() => {
-      visualRef.current = { ...visualRef.current, cents: null, inputState: "No voice detected", pitch: null, voiceState: "No voice detected" };
+      visualRef.current = { ...visualRef.current, cents: null, inputState: "No voice detected", pitch: null, voiceState: "No voice detected", soundDetected: false, pitchDetected: false };
       setDetectedPitch(null);
       publishVisual();
     }, STALE_PITCH_TIMEOUT_MS);
@@ -107,9 +109,10 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
     publishVisual();
   }, [snapshot.status]);
 
-  const handlePitchFrame = (frame: PitchFrame | null, engine: PracticeEngine) => {
+  const handleAudioObservation = ({ frame, soundDetected }: AudioObservation, engine: PracticeEngine) => {
     if (engine.snapshot.status !== "active") return;
     const inputState = getPitchInputState(frame);
+    const signalState = getPracticeSignalState(soundDetected, frame);
     const usable = frame !== null && isUsablePitchFrame(frame);
     const interpretedFrame = usable ? smoothPitchFrame(frame, visualRef.current.pitch, engine.snapshot.currentExercise.pitchSmoothing) : null;
     setDetectedPitch(interpretedFrame);
@@ -118,7 +121,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
       const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
       const history = trimPitchHistory(visualRef.current.history, nowMs, PITCH_TRAIL_WINDOW_MS);
       const stabilityObservations = trimPitchTrail(visualRef.current.stabilityObservations, nowMs, PITCH_TRAIL_WINDOW_MS);
-      visualRef.current = { ...visualRef.current, cents: null, history, inputState, nowMs, pitch: null, stability: stabilityObservations.length ? calculatePitchStability(stabilityObservations) : 0, stabilityObservations, voiceState: inputState };
+      visualRef.current = { ...visualRef.current, cents: null, history, inputState, nowMs, pitch: null, stability: stabilityObservations.length ? calculatePitchStability(stabilityObservations) : 0, stabilityObservations, voiceState: signalState.label, soundDetected, pitchDetected: false };
       publishVisual();
       return;
     }
@@ -145,6 +148,8 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
       stability: isSingPhase ? calculatePitchStability(stabilityObservations) : visualRef.current.stability,
       stabilityObservations,
       voiceState: `${interpretedFrame.noteName}${interpretedFrame.octave} detected`,
+      soundDetected,
+      pitchDetected: true,
     };
     publishVisual();
   };
@@ -157,7 +162,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
       engine.start();
       const audio = new AudioEngine();
       audioRef.current = audio;
-      await audio.start((frame) => handlePitchFrame(frame, engine));
+      await audio.start((observation) => handleAudioObservation(observation, engine));
       setVisualVoiceState("Listening...", "No voice detected");
     } catch (cause) {
       audioRef.current?.stop();
@@ -249,7 +254,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
     : isTimed
       ? `Time remaining · ${formatTime(Math.max(0, snapshot.currentRoutineExercise.duration * 1000 - snapshot.exerciseElapsedMs))}`
       : isContinuous
-        ? visual.inputState === "No voice detected" ? "Sing or glide gently when you are ready" : `${visual.pitch ? `${visual.pitch.noteName}${visual.pitch.octave} detected` : "Listening"} · Keep the sound easy`
+        ? !visual.soundDetected ? "Make a gentle sound when you are ready" : !visual.pitchDetected ? "Sound detected · Pitch unavailable" : `${visual.pitch ? `${visual.pitch.noteName}${visual.pitch.octave} detected` : "Sound detected"} · Keep the sound easy`
         : !current
           ? "Follow the exercise instructions"
           : isPitchSequence
@@ -262,7 +267,9 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
                   : "Good · Keep going"
             : snapshot.phase === "prepare" || snapshot.phase === "reference"
               ? `Listen for ${targetName}`
-              : visual.inputState === "No voice detected"
+              : visual.soundDetected && !visual.pitchDetected
+                ? "Sound detected · Pitch unavailable"
+                : visual.inputState === "No voice detected"
                 ? `Sing ${targetName} to begin`
                 : visual.inputState === "Too quiet"
                   ? `Too quiet — sing ${targetName} to begin`
@@ -298,7 +305,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
         </>}
 
         <div className="practice-guidance" aria-live="polite">{guidance}</div>
-        {(isPitchExercise || isContinuous) && <PitchMeter cents={visual.cents} history={visual.history} nowMs={visual.nowMs} target={current} showTuner={isPitchExercise} />}
+        {(isPitchExercise || isContinuous) && <PitchMeter cents={visual.cents} history={visual.history} nowMs={visual.nowMs} target={current} showTuner={isPitchExercise} informational={isContinuous} />}
 
         {!isTimed && <div className="practice-user-card">
           <div>
