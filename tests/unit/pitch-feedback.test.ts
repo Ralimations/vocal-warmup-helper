@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { calculatePitchStability, centsToMeterPercent, getPitchInputState, getSustainProgress, getTunerState, isPitchStale, trimPitchTrail, type PitchObservation } from "@/features/practice/pitch-feedback";
+import { calculatePitchStability, centsToMeterPercent, getPitchAxisLabels, getPitchInputState, getSuccessfulHoldProgress, getTunerState, isPitchStale, trimPitchHistory, trimPitchTrail, type PitchHistoryPoint, type PitchObservation } from "@/features/practice/pitch-feedback";
 import { exercises } from "@/data/exercises";
 import { buildTargetNotes } from "@/features/practice/target-note-sequence";
 
 describe("pitch feedback", () => {
-  it("classifies flat, in-tune, and sharp pitch", () => {
-    expect(getTunerState(-11)).toBe("FLAT");
-    expect(getTunerState(10)).toBe("IN TUNE");
-    expect(getTunerState(11)).toBe("SHARP");
+  it("uses friendly tiered tuning states", () => {
+    expect(getTunerState(5)).toBe("CENTERED");
+    expect(getTunerState(15)).toBe("IN TUNE");
+    expect(getTunerState(-34)).toBe("SLIGHTLY FLAT");
+    expect(getTunerState(34)).toBe("SLIGHTLY SHARP");
+    expect(getTunerState(-36)).toBe("FLAT");
+    expect(getTunerState(36)).toBe("SHARP");
   });
 
   it("clamps the tuner marker to the visible range", () => {
@@ -28,9 +31,25 @@ describe("pitch feedback", () => {
     expect(trimPitchTrail(observations, 5000).map((observation) => observation.timestamp)).toEqual([0, 1000, 5000]);
   });
 
+  it("keeps absolute pitch history across target changes and generates note labels", () => {
+    const history: PitchHistoryPoint[] = [{ timestamp: 1000, midi: 62 }, { timestamp: 2000, midi: 64 }];
+    expect(trimPitchHistory(history, 2000)).toEqual(history);
+    expect(getPitchAxisLabels(history, 64).map((label) => label.note)).toEqual(["G#4", "F#4", "E4", "D4", "C4"]);
+  });
+
+  it("does not create history points from silent or uncertain input", () => {
+    expect(trimPitchHistory([
+      { timestamp: 1000, midi: 64, confidence: 0.2 },
+      { timestamp: 1000, midi: 64, amplitude: 0.001 },
+      { timestamp: 1000, midi: Number.NaN },
+      { timestamp: 1000, midi: 64, confidence: 0.9, amplitude: 0.1 },
+    ], 1000)).toHaveLength(1);
+  });
+
   it("reports stable pitch separately from accuracy", () => {
     expect(calculatePitchStability([{ timestamp: 1, cents: 15 }, { timestamp: 2, cents: 15 }, { timestamp: 3, cents: 16 }])).toBeGreaterThan(95);
     expect(calculatePitchStability([{ timestamp: 1, cents: -35 }, { timestamp: 2, cents: 35 }, { timestamp: 3, cents: -30 }, { timestamp: 4, cents: 30 }])).toBeLessThan(25);
+    expect(calculatePitchStability([{ timestamp: 1, cents: -6 }, { timestamp: 2, cents: 6 }, { timestamp: 3, cents: -5 }, { timestamp: 4, cents: 5 }])).toBeGreaterThan(70);
   });
 
   it("excludes silent, uncertain, and invalid observations from stability", () => {
@@ -42,12 +61,10 @@ describe("pitch feedback", () => {
     ])).toBe(100);
   });
 
-  it("calculates sustain progress only within the singing window", () => {
-    const exercise = { ...exercises.find((item) => item.id === "humming")!, pattern: [0] };
-    const target = buildTargetNotes(exercise, { exerciseId: exercise.id, order: 0, duration: 6, tempo: 60, startNote: "C4", endNote: "C4", transpositionStep: 0, referenceVolume: 0.5, restAfter: 0 })[0];
-    expect(getSustainProgress(target.singStartMs - 1, target).percent).toBe(0);
-    expect(getSustainProgress(target.singStartMs + 1500, target).percent).toBe(50);
-    expect(getSustainProgress(target.singEndMs + 1, target).percent).toBe(100);
+  it("calculates successful hold progress independently of elapsed phase time", () => {
+    expect(getSuccessfulHoldProgress(0, 3000).percent).toBe(0);
+    expect(getSuccessfulHoldProgress(1500, 3000).percent).toBe(50);
+    expect(getSuccessfulHoldProgress(4000, 3000).percent).toBe(100);
   });
 
   it("identifies stale pitch and input states", () => {

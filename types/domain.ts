@@ -2,11 +2,13 @@ export type NoteName = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" |
 export type ExerciseCategory = "preparation" | "warmup" | "pitch" | "scale" | "range" | "cooldown";
 export type PracticeStatus = "idle" | "requesting" | "active" | "paused" | "complete" | "error";
 export type MicrophoneStatus = "idle" | "requesting" | "active" | "denied" | "unavailable" | "error";
+export type ExerciseCompletionMode = "timed" | "pitch-hold" | "pitch-sequence" | "continuous" | "manual";
 
 export interface PitchFrame { timestamp: number; frequency: number; midiNumber: number; noteName: NoteName; octave: number; cents: number; confidence: number; amplitude: number; }
 export interface PitchDetectionResult { frequency: number; confidence: number; amplitude: number; }
 export interface VocalRange { lowest: string; highest: string; semitones: number; octaves: number; }
-export interface Exercise { id: string; name: string; slug: string; description: string; instructions: string; category: ExerciseCategory; difficulty: "gentle" | "steady" | "focused"; pattern: number[]; defaultTempo: number; defaultDuration: number; singDurationMs: number; supportsPitchTracking: boolean; supportsTransposition: boolean; referenceToneEnabled: boolean; }
+export type PitchSmoothing = "none" | "light" | "moderate";
+export interface Exercise { id: string; name: string; slug: string; description: string; instructions: string; category: ExerciseCategory; difficulty: "gentle" | "steady" | "focused"; pattern: number[]; defaultTempo: number; defaultDuration: number; singDurationMs: number; completionMode: ExerciseCompletionMode; beatsPerNote?: number; countInBeats?: number; restBetweenSequencesMs?: number; pitchEvaluationStartRatio?: number; pitchEvaluationEndRatio?: number; pitchSmoothing: PitchSmoothing; supportsPitchTracking: boolean; supportsTransposition: boolean; referenceToneEnabled: boolean; }
 export interface RoutineExercise { exerciseId: string; order: number; duration: number; tempo: number; startNote: string; endNote: string; transpositionStep: number; referenceVolume: number; restAfter: number; }
 export interface Routine { id: string; name: string; description: string; exerciseItems: RoutineExercise[]; estimatedDuration: number; createdAt: string; updatedAt: string; isBuiltIn: boolean; }
 export interface PracticeSession { id: string; routineId: string; startedAt: string; completedAt?: string; durationSeconds: number; completedExercises: number; totalExercises: number; averagePitchAccuracy: number; averageCentsError: number; highestDetectedNote?: string; lowestDetectedNote?: string; highestConfirmedNote?: string; lowestConfirmedNote?: string; }

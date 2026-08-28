@@ -6,8 +6,7 @@ import { routineTemplates } from "@/data/routine-templates";
 import { AudioEngine } from "@/features/audio/audio-engine";
 import { ReferenceTonePlayer } from "@/features/audio/reference-tone-player";
 import { PracticeEngine, type ActivePracticeSession } from "@/features/practice/practice-engine";
-import { getReferenceTransitionId } from "@/features/practice/reference-tone-scheduler";
-import { calculatePitchStability, centsFromTarget, getPitchInputState, getSustainProgress, isUsablePitchFrame, PITCH_TRAIL_WINDOW_MS, STALE_PITCH_TIMEOUT_MS, trimPitchTrail, type PitchInputState, type PitchObservation } from "@/features/practice/pitch-feedback";
+import { calculatePitchStability, centsFromTarget, getPitchInputState, getSuccessfulHoldProgress, getTunerState, isUsablePitchFrame, PITCH_TRAIL_WINDOW_MS, smoothPitchFrame, STALE_PITCH_TIMEOUT_MS, trimPitchHistory, trimPitchTrail, type PitchHistoryPoint, type PitchInputState, type PitchObservation } from "@/features/practice/pitch-feedback";
 import { usePracticeStore } from "@/stores/practice-store";
 import { PitchMeter } from "@/components/practice/pitch-meter";
 import type { PitchFrame } from "@/types/domain";
@@ -21,23 +20,29 @@ function formatSeconds(milliseconds: number): string {
   return (milliseconds / 1000).toFixed(1);
 }
 
+function formatOffset(cents: number | null): string {
+  if (cents === null || !Number.isFinite(cents)) return "—";
+  return `${cents > 0 ? "+" : ""}${Math.round(cents)}`;
+}
+
 interface VisualState {
   cents: number | null;
+  history: PitchHistoryPoint[];
+  inputState: PitchInputState;
   nowMs: number;
   pitch: PitchFrame | null;
   stability: number;
-  trail: PitchObservation[];
+  stabilityObservations: PitchObservation[];
   voiceState: string;
 }
 
-const initialVisualState: VisualState = { cents: null, nowMs: 0, pitch: null, stability: 0, trail: [], voiceState: "No voice detected" };
+const initialVisualState: VisualState = { cents: null, history: [], inputState: "No voice detected", nowMs: 0, pitch: null, stability: 0, stabilityObservations: [], voiceState: "No voice detected" };
 
 export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
   const routine = routineTemplates[1];
   const engineRef = useRef<PracticeEngine | null>(null);
   const audioRef = useRef<AudioEngine | null>(null);
   const tonePlayer = useRef(new ReferenceTonePlayer());
-  const referenceIdRef = useRef<string | null>(null);
   const visualRef = useRef<VisualState>(initialVisualState);
   const visualTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,19 +58,19 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
     if (visualTimerRef.current !== null) return;
     visualTimerRef.current = setTimeout(() => {
       visualTimerRef.current = null;
-      setVisual({ ...visualRef.current, trail: [...visualRef.current.trail] });
+      setVisual({ ...visualRef.current, history: [...visualRef.current.history], stabilityObservations: [...visualRef.current.stabilityObservations] });
     }, 50);
   };
 
-  const setVisualVoiceState = (voiceState: string) => {
-    visualRef.current = { ...visualRef.current, voiceState };
+  const setVisualVoiceState = (voiceState: string, inputState: PitchInputState = visualRef.current.inputState) => {
+    visualRef.current = { ...visualRef.current, inputState, voiceState };
     publishVisual();
   };
 
   const armStalePitchTimer = () => {
     if (staleTimerRef.current !== null) clearTimeout(staleTimerRef.current);
     staleTimerRef.current = setTimeout(() => {
-      visualRef.current = { ...visualRef.current, cents: null, pitch: null, voiceState: "No voice detected" };
+      visualRef.current = { ...visualRef.current, cents: null, inputState: "No voice detected", pitch: null, voiceState: "No voice detected" };
       setDetectedPitch(null);
       publishVisual();
     }, STALE_PITCH_TIMEOUT_MS);
@@ -79,7 +84,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
       audioRef.current?.stop();
       audioRef.current = null;
       engine.dispose();
-      player.stop();
+      player.close();
       if (visualTimerRef.current !== null) clearTimeout(visualTimerRef.current);
       if (staleTimerRef.current !== null) clearTimeout(staleTimerRef.current);
       setDetectedPitch(null);
@@ -90,7 +95,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
     const targetId = snapshot.currentTargetNote?.id ?? null;
     if (targetIdRef.current === targetId) return;
     targetIdRef.current = targetId;
-    visualRef.current = { ...visualRef.current, cents: null, pitch: null, stability: 0, trail: [], voiceState: "No voice detected" };
+    visualRef.current = { ...visualRef.current, cents: null, inputState: "No voice detected", pitch: null, stability: 0, stabilityObservations: [], voiceState: "No voice detected" };
     publishVisual();
   }, [snapshot.currentTargetNote?.id]);
 
@@ -98,59 +103,71 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
     if (snapshot.status !== "complete") return;
     audioRef.current?.stop();
     audioRef.current = null;
-    visualRef.current = { ...visualRef.current, voiceState: "Complete" };
+    visualRef.current = { ...visualRef.current, inputState: "Detected", voiceState: "Complete" };
     publishVisual();
   }, [snapshot.status]);
 
   const handlePitchFrame = (frame: PitchFrame | null, engine: PracticeEngine) => {
     if (engine.snapshot.status !== "active") return;
-    const inputState: PitchInputState = getPitchInputState(frame);
+    const inputState = getPitchInputState(frame);
     const usable = frame !== null && isUsablePitchFrame(frame);
-    setDetectedPitch(usable ? frame : null);
-    if (!usable) {
-      visualRef.current = { ...visualRef.current, cents: null, pitch: null, voiceState: inputState };
+    const interpretedFrame = usable ? smoothPitchFrame(frame, visualRef.current.pitch, engine.snapshot.currentExercise.pitchSmoothing) : null;
+    setDetectedPitch(interpretedFrame);
+    engine.addPitchFrame(interpretedFrame);
+    if (!interpretedFrame) {
+      const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+      const history = trimPitchHistory(visualRef.current.history, nowMs, PITCH_TRAIL_WINDOW_MS);
+      const stabilityObservations = trimPitchTrail(visualRef.current.stabilityObservations, nowMs, PITCH_TRAIL_WINDOW_MS);
+      visualRef.current = { ...visualRef.current, cents: null, history, inputState, nowMs, pitch: null, stability: stabilityObservations.length ? calculatePitchStability(stabilityObservations) : 0, stabilityObservations, voiceState: inputState };
       publishVisual();
       return;
     }
-
     armStalePitchTimer();
     const target = engine.snapshot.currentTargetNote;
     const targetId = target?.id ?? null;
     if (targetIdRef.current !== targetId) {
       targetIdRef.current = targetId;
-      visualRef.current = { ...visualRef.current, cents: null, pitch: null, stability: 0, trail: [] };
+      visualRef.current = { ...visualRef.current, cents: null, stability: 0, stabilityObservations: [] };
     }
-    const cents = target ? centsFromTarget(frame.frequency, target.frequency) : null;
+    const cents = target ? centsFromTarget(interpretedFrame.frequency, target.frequency) : null;
+    const history = trimPitchHistory([...visualRef.current.history, { timestamp: interpretedFrame.timestamp, midi: interpretedFrame.midiNumber, confidence: interpretedFrame.confidence, amplitude: interpretedFrame.amplitude }], interpretedFrame.timestamp, PITCH_TRAIL_WINDOW_MS);
     const isSingPhase = engine.snapshot.phase === "sing" && target !== undefined;
-    const nextTrail = isSingPhase && cents !== null
-      ? trimPitchTrail([...visualRef.current.trail, { timestamp: frame.timestamp, cents, confidence: frame.confidence, amplitude: frame.amplitude }], frame.timestamp, PITCH_TRAIL_WINDOW_MS)
-      : visualRef.current.trail;
+    const stabilityObservations = isSingPhase && cents !== null
+      ? trimPitchTrail([...visualRef.current.stabilityObservations, { timestamp: interpretedFrame.timestamp, cents, confidence: interpretedFrame.confidence, amplitude: interpretedFrame.amplitude }], interpretedFrame.timestamp, PITCH_TRAIL_WINDOW_MS)
+      : visualRef.current.stabilityObservations;
+    if (isSingPhase) tonePlayer.current.duck();
     visualRef.current = {
       cents,
-      nowMs: frame.timestamp,
-      pitch: frame,
-      stability: isSingPhase ? calculatePitchStability(nextTrail) : visualRef.current.stability,
-      trail: nextTrail,
-      voiceState: `${frame.noteName}${frame.octave} detected`,
+      history,
+      inputState: "Detected",
+      nowMs: interpretedFrame.timestamp,
+      pitch: interpretedFrame,
+      stability: isSingPhase ? calculatePitchStability(stabilityObservations) : visualRef.current.stability,
+      stabilityObservations,
+      voiceState: `${interpretedFrame.noteName}${interpretedFrame.octave} detected`,
     };
-    engine.addPitchFrame(frame);
     publishVisual();
   };
 
   const begin = async () => {
     const engine = engineRef.current;
     if (!engine) return;
+    const pitchOptional = engine.snapshot.currentExercise.completionMode === "timed" || engine.snapshot.currentExercise.completionMode === "continuous";
     try {
       engine.start();
       const audio = new AudioEngine();
       audioRef.current = audio;
       await audio.start((frame) => handlePitchFrame(frame, engine));
-      setVisualVoiceState("Listening...");
+      setVisualVoiceState("Listening...", "No voice detected");
     } catch (cause) {
       audioRef.current?.stop();
       audioRef.current = null;
-      engine.stop();
-      setError(cause instanceof Error ? cause.message : "Microphone access was not available.");
+      if (pitchOptional) {
+        setVisualVoiceState("In progress", "No voice detected");
+      } else {
+        engine.stop();
+        setError(cause instanceof Error ? cause.message : "Microphone access was not available.");
+      }
     }
   };
 
@@ -160,12 +177,12 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
     if (!engine) return;
     if (engine.snapshot.status === "paused") {
       engine.resume();
-      setVisualVoiceState("Listening...");
+      setVisualVoiceState("Listening...", "No voice detected");
       return;
     }
     if (engine.snapshot.status === "active") return;
     try {
-      await tonePlayer.current.unlock();
+      if (isPitchExercise) await tonePlayer.current.unlock();
       await begin();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Audio could not be started.");
@@ -174,6 +191,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
 
   const pause = () => {
     engineRef.current?.pause();
+    tonePlayer.current.duck();
     setVisualVoiceState("Paused");
   };
 
@@ -189,6 +207,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
   const stop = () => {
     audioRef.current?.stop();
     audioRef.current = null;
+    tonePlayer.current.stop();
     engineRef.current?.stop();
     onClose();
   };
@@ -197,25 +216,63 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
     const result = engineRef.current?.complete();
     audioRef.current?.stop();
     audioRef.current = null;
+    tonePlayer.current.stop();
     if (result) setSnapshot(result);
-    setVisualVoiceState("Complete");
+    setVisualVoiceState("Complete", "Detected");
   };
 
   const current = snapshot.currentTargetNote;
   useEffect(() => {
-    if (!guideToneOn || !current) return;
-    const referenceId = getReferenceTransitionId(snapshot.phase, current.id, referenceIdRef.current);
-    if (!referenceId) return;
-    referenceIdRef.current = referenceId;
-    tonePlayer.current.play(current.note, 0.7, guideVolume);
+    if (!guideToneOn || !current || snapshot.phase === "idle" || snapshot.phase === "prepare") {
+      tonePlayer.current.stop();
+      return;
+    }
+    if (snapshot.phase === "reference") tonePlayer.current.start(current.note, guideVolume);
+    else if (snapshot.phase === "sing") tonePlayer.current.duck();
+    else tonePlayer.current.stop();
   }, [current, guideToneOn, guideVolume, snapshot.phase]);
 
   const isRunning = snapshot.status === "active";
   const isPaused = snapshot.status === "paused";
   const isComplete = snapshot.status === "complete";
-  const sustain = getSustainProgress(snapshot.exerciseElapsedMs, current);
-  const detectedNote = visual.pitch ? `${visual.pitch.noteName}${visual.pitch.octave}` : "—";
-  const sequence = snapshot.targetNotes;
+  const completionMode = snapshot.currentExercise.completionMode;
+  const isTimed = completionMode === "timed";
+  const isPitchHold = completionMode === "pitch-hold";
+  const isPitchSequence = completionMode === "pitch-sequence";
+  const isPitchExercise = isPitchHold || isPitchSequence;
+  const isContinuous = completionMode === "continuous";
+  const hold = getSuccessfulHoldProgress(snapshot.successfulHoldMs, snapshot.requiredHoldMs);
+  const tunerState = getTunerState(visual.cents);
+  const targetName = current?.note ?? "the target";
+  const guidance = isComplete
+    ? "✓ EXERCISE COMPLETE"
+    : isTimed
+      ? `Time remaining · ${formatTime(Math.max(0, snapshot.currentRoutineExercise.duration * 1000 - snapshot.exerciseElapsedMs))}`
+      : isContinuous
+        ? visual.inputState === "No voice detected" ? "Sing or glide gently when you are ready" : `${visual.pitch ? `${visual.pitch.noteName}${visual.pitch.octave} detected` : "Listening"} · Keep the sound easy`
+        : !current
+          ? "Follow the exercise instructions"
+          : isPitchSequence
+            ? snapshot.phase === "prepare" || snapshot.phase === "reference"
+              ? `Count in · Get ready for ${targetName}`
+              : tunerState === "FLAT" || tunerState === "SLIGHTLY FLAT"
+                ? "A little higher · Keep going"
+                : tunerState === "SHARP" || tunerState === "SLIGHTLY SHARP"
+                  ? "A little lower · Keep going"
+                  : "Good · Keep going"
+            : snapshot.phase === "prepare" || snapshot.phase === "reference"
+              ? `Listen for ${targetName}`
+              : visual.inputState === "No voice detected"
+                ? `Sing ${targetName} to begin`
+                : visual.inputState === "Too quiet"
+                  ? `Too quiet — sing ${targetName} to begin`
+                  : visual.inputState === "Pitch uncertain"
+                    ? "Pitch uncertain — hold the note clearly"
+                    : tunerState === "FLAT" || tunerState === "SLIGHTLY FLAT"
+                      ? `${tunerState} — Raise your pitch slightly`
+                      : tunerState === "SHARP" || tunerState === "SLIGHTLY SHARP"
+                        ? `${tunerState} — Lower your pitch slightly`
+                        : hold.percent >= 100 ? "✓ NOTE HELD" : `${tunerState} — Hold it... ${formatSeconds(hold.elapsedMs)} / ${formatSeconds(hold.durationMs)} sec`;
 
   return (
     <div className="practice-backdrop" role="dialog" aria-modal="true" aria-labelledby="practice-title">
@@ -225,47 +282,47 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
         <h2 id="practice-title">{isComplete ? "Warmup complete" : snapshot.currentExercise.name}</h2>
         <p>{isComplete ? "The session summary is available below." : snapshot.currentExercise.instructions}</p>
 
-        <div className="practice-targets" aria-label="Target note sequence">
-          {sequence.map((target, index) => (
-            <span key={target.id} className={`practice-target ${index < snapshot.currentTargetIndex ? "done" : ""} ${index === snapshot.currentTargetIndex ? "current" : ""}`}>
-              {index < snapshot.currentTargetIndex ? "✓ " : ""}{target.note}
-            </span>
-          ))}
-          {sequence.length === 0 && <span className="muted">No pitch target for this exercise.</span>}
-        </div>
+        {isPitchExercise && <>
+          <div className="practice-targets" aria-label="Target note sequence">
+            {snapshot.targetNotes.map((target, index) => (
+              <span key={target.id} className={`practice-target ${index < snapshot.currentTargetIndex ? "done" : ""} ${index === snapshot.currentTargetIndex ? "current" : ""}`}>
+                {index < snapshot.currentTargetIndex ? "✓ " : ""}{target.note}
+              </span>
+            ))}
+          </div>
+          <div className="practice-target-card">
+            <small>TARGET</small>
+            <strong>{current?.note ?? "—"}</strong>
+            <span>{current ? `${current.frequency.toFixed(2)} Hz` : "No pitch target"}</span>
+          </div>
+        </>}
 
-        <div className="practice-target-card">
-          <small>TARGET</small>
-          <strong>{current?.note ?? "—"}</strong>
-          <span>{current ? `${current.frequency.toFixed(2)} Hz` : "No pitch target"}</span>
-        </div>
+        <div className="practice-guidance" aria-live="polite">{guidance}</div>
+        {(isPitchExercise || isContinuous) && <PitchMeter cents={visual.cents} history={visual.history} nowMs={visual.nowMs} target={current} showTuner={isPitchExercise} />}
 
-        <PitchMeter cents={visual.cents} trail={visual.trail} nowMs={visual.nowMs} />
-
-        <div className="practice-user-card">
+        {!isTimed && <div className="practice-user-card">
           <div>
             <small>YOU</small>
-            <strong>{detectedNote}</strong>
-            <span>{visual.voiceState}</span>
+            <strong>{visual.pitch ? `${visual.pitch.noteName}${visual.pitch.octave}` : "—"}</strong>
+            <span>{visual.voiceState}{isPitchExercise ? ` · Pitch Offset: ${formatOffset(visual.cents)}` : ""}</span>
           </div>
           <div className="practice-stats">
-            <span><b>{visual.stability}%</b>Pitch Stability</span>
-            <span><b>{formatSeconds(sustain.elapsedMs)} / {formatSeconds(sustain.durationMs)}s</b>Sustain</span>
+            {isPitchExercise && <span><b>{visual.stabilityObservations.length ? `${visual.stability}%` : "—"}</b>Pitch Stability</span>}
+            {isPitchHold && <span><b>{formatSeconds(hold.elapsedMs)} / {formatSeconds(hold.durationMs)} sec</b>Successful hold</span>}
+            {isPitchSequence && <span><b>{Math.round(snapshot.progress * 100)}%</b>Sequence progress</span>}
           </div>
-          <div className="sustain-track" aria-label={`Sustain progress: ${formatSeconds(sustain.elapsedMs)} of ${formatSeconds(sustain.durationMs)} seconds`}>
-            <span style={{ width: `${sustain.percent}%` }} />
-          </div>
-        </div>
+          {isPitchHold && <div className="sustain-track" aria-label={`Successful hold progress: ${formatSeconds(hold.elapsedMs)} of ${formatSeconds(hold.durationMs)} seconds`}>
+            <span style={{ width: `${hold.percent}%` }} />
+          </div>}
+        </div>}
 
-        <div className="practice-status" aria-live="polite">
-          {isRunning ? "Listening" : isPaused ? "Paused" : isComplete ? "Complete" : "Ready"} · {formatTime(snapshot.elapsedMs)} total
-        </div>
+        <div className="practice-status">{isRunning ? (isTimed ? "In progress" : "Listening") : isPaused ? "Paused" : isComplete ? "Complete" : "Ready"} · {isTimed ? `${formatTime(snapshot.exerciseElapsedMs)} / ${formatTime(snapshot.currentRoutineExercise.duration * 1000)}` : `${formatTime(snapshot.elapsedMs)} total`}</div>
         {error && <p className="practice-error">{error}</p>}
 
         {isComplete && snapshot.summary && (
           <div className="practice-summary">
             <span><strong>{snapshot.summary.averagePitchAccuracy}%</strong>Accuracy</span>
-            <span><strong>{snapshot.summary.averageCentsError}</strong>Avg cents</span>
+            <span><strong>{snapshot.summary.averageCentsError}</strong>Avg offset</span>
             <span><strong>{formatTime(snapshot.summary.durationSeconds * 1000)}</strong>Duration</span>
           </div>
         )}
@@ -274,12 +331,12 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
           <>
             <div className="practice-actions">
               <button type="button" onClick={start}>{isPaused ? "Resume" : isRunning ? "Listening" : "Start practice"}</button>
-              <button type="button" onClick={() => current && tonePlayer.current.play(current.note, 0.7, guideVolume)} disabled={!current}>Replay note</button>
-              <button type="button" onClick={complete}>Complete</button>
+              {isPitchExercise && <button type="button" onClick={() => current && tonePlayer.current.start(current.note, guideVolume)} disabled={!current}>Replay guide</button>}
+              {completionMode === "manual" && <button type="button" onClick={complete}>Complete</button>}
             </div>
             <div className="practice-navigation">
               <button type="button" onClick={previous} disabled={snapshot.currentExerciseIndex === 0 && snapshot.currentTargetIndex <= 0}>Previous</button>
-              <button type="button" onClick={next}>Next</button>
+              <button type="button" onClick={next}>{isPitchSequence ? "Skip target" : "Skip exercise"}</button>
             </div>
             <div className="practice-options">
               <label><input type="checkbox" checked={guideToneOn} onChange={(event) => setGuideToneOn(event.target.checked)} /> Guide tone</label>
