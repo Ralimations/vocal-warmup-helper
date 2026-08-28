@@ -5,7 +5,7 @@ export class MicrophoneManager {
   private context: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
-  async start(): Promise<{ analyser: AnalyserNode; context: AudioContext; source: MediaStreamAudioSourceNode }> {
+  async start(): Promise<{ analyser: AnalyserNode; context: AudioContext; source: MediaStreamAudioSourceNode; microphoneLabel: string }> {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("Microphone is unavailable in this browser.");
     this.stop();
     try {
@@ -18,7 +18,7 @@ export class MicrophoneManager {
       this.analyser = this.context.createAnalyser();
       this.analyser.fftSize = 2048;
       this.source.connect(this.analyser);
-      return { analyser: this.analyser, context: this.context, source: this.source };
+      return { analyser: this.analyser, context: this.context, source: this.source, microphoneLabel: this.stream.getAudioTracks()[0]?.label || "Label unavailable" };
     } catch (error) {
       this.stop();
       throw error;

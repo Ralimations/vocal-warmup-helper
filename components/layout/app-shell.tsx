@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { FunctionalPracticeModal } from "@/components/practice/functional-practice-modal";
+import { APP_VERSION } from "@/lib/alpha";
 
 type ViewName = "dashboard" | "practice" | "routines" | "analytics" | "achievements" | "songs" | "profile" | "settings";
 
@@ -43,6 +44,14 @@ export function AppShell({ initialView }: { initialView: ViewName }) {
               Start practice
             </button>
             <p className="muted">Your voice is processed in this browser. Audio is not uploaded.</p>
+            <div className="tester-guidance">
+              <strong>Alpha testing notes</strong>
+              <ul>
+                <li>Headphones are recommended for baseline testing.</li>
+                <li>Allow microphone permission; audio is processed locally.</li>
+                <li>Test in a quiet room where practical.</li>
+              </ul>
+            </div>
           </div>
         ) : (
           <div className="base-panel">
@@ -51,6 +60,8 @@ export function AppShell({ initialView }: { initialView: ViewName }) {
           </div>
         )}
       </section>
+
+      <footer className="app-footer"><span>{APP_VERSION}</span><span>Alpha · local microphone processing</span></footer>
 
       {practiceOpen && <FunctionalPracticeModal onClose={() => setPracticeOpen(false)} />}
     </main>

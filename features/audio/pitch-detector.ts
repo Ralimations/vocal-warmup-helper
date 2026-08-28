@@ -51,10 +51,12 @@ export class SoundActivityTracker {
 /** Replaceable YIN-style detector with a short periodic-signal debounce. */
 export class YinPitchDetector implements IPitchDetector {
   private voicedCandidates: PitchDetectionResult[] = [];
+  private latestConfidence: number | null = null;
 
   constructor(private readonly threshold = .14) {}
 
   detect(samples: Float32Array, sampleRate: number): PitchDetectionResult | null {
+    this.latestConfidence = null;
     const candidate = this.detectCandidate(samples, sampleRate);
     if (!candidate) {
       this.voicedCandidates = [];
@@ -74,6 +76,10 @@ export class YinPitchDetector implements IPitchDetector {
     };
   }
 
+  getLastConfidence(): number | null {
+    return this.latestConfidence;
+  }
+
   private detectCandidate(samples: Float32Array, sampleRate: number): PitchDetectionResult | null {
     const amplitude = calculateRms(samples);
     if (amplitude < SOUND_ACTIVITY_THRESHOLD) return null;
@@ -85,6 +91,7 @@ export class YinPitchDetector implements IPitchDetector {
     while (tau + 1 < size && normalized[tau + 1] < normalized[tau]) tau++;
     const frequency = sampleRate / tau; if (frequency < 70 || frequency > 1000) return null;
     const confidence = Math.max(0, Math.min(1, 1 - normalized[tau]));
+    this.latestConfidence = confidence;
     if (confidence < MIN_PERIODICITY_CONFIDENCE) return null;
     return { frequency, confidence, amplitude };
   }
