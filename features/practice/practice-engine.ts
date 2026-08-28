@@ -152,7 +152,6 @@ export class PracticeEngine {
     if (!target) return;
     currentSamples.push({ frame, elapsedMs: this.session.exerciseElapsedMs });
     this.session = { ...this.session, exercises: this.session.exercises.map((exercise, index) => index === this.session.currentExerciseIndex ? { ...exercise, score: scorePitchFrames(currentSamples, exercise.targetNotes, this.pitchTolerance) } : exercise) };
-    this.emit();
   }
 
   reset(): ActivePracticeSession {

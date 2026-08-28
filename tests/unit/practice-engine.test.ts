@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { exercises } from "@/data/exercises";
 import { PracticeEngine } from "@/features/practice/practice-engine";
+import { getSustainProgress } from "@/features/practice/pitch-feedback";
 import type { PitchFrame, Routine } from "@/types/domain";
 
 const routine: Routine = {
@@ -55,7 +56,7 @@ describe("PracticeEngine", () => {
     expect(engine.snapshot.phase).toBe("reference");
     vi.advanceTimersByTime(700);
     expect(engine.snapshot.phase).toBe("sing");
-    vi.advanceTimersByTime(2000);
+    vi.advanceTimersByTime(3000);
     expect(engine.snapshot.phase).toBe("evaluate");
     vi.advanceTimersByTime(300);
     expect(engine.snapshot.phase).toBe("transition");
@@ -76,5 +77,24 @@ describe("PracticeEngine", () => {
 
     expect(completed.summary?.averagePitchAccuracy).toBeGreaterThan(70);
     expect(completed.summary?.averageCentsError).toBeGreaterThan(0);
+  });
+
+  it("freezes sustain progress while paused and continues after resume", () => {
+    vi.useFakeTimers();
+    const engine = new PracticeEngine({ routine: { ...routine, exerciseItems: [{ ...routine.exerciseItems[0], duration: 6 }] }, exercises, tickMs: 50 });
+    engine.start();
+    vi.advanceTimersByTime(2000);
+    const beforePause = getSustainProgress(engine.snapshot.exerciseElapsedMs, engine.snapshot.currentTargetNote);
+    engine.pause();
+    vi.advanceTimersByTime(1000);
+    const whilePaused = getSustainProgress(engine.snapshot.exerciseElapsedMs, engine.snapshot.currentTargetNote);
+
+    expect(beforePause.percent).toBeGreaterThan(0);
+    expect(whilePaused).toEqual(beforePause);
+    engine.resume();
+    vi.advanceTimersByTime(500);
+    expect(getSustainProgress(engine.snapshot.exerciseElapsedMs, engine.snapshot.currentTargetNote).percent).toBeGreaterThan(beforePause.percent);
+    engine.stop();
+    vi.useRealTimers();
   });
 });

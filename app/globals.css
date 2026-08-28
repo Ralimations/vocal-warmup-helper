@@ -37,13 +37,49 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .practice-meta { display: flex; justify-content: space-between; gap: 16px; color: #525252; font-size: 13px; }
 .practice-targets { display: flex; flex-wrap: wrap; gap: 8px; }
 .practice-target { padding: 6px 8px; border: 1px solid #a3a3a3; border-radius: 4px; font-size: 13px; }
+.practice-target.done { color: #525252; }
 .practice-target.current { border-color: #171717; background: #e5e5e5; font-weight: 700; }
-.practice-readout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
-.practice-readout > div { padding: 20px 12px; border: 1px solid #d4d4d4; border-radius: 4px; text-align: center; }
-.practice-readout strong { display: block; margin-top: 8px; font-size: 40px; }
-.practice-readout small, .practice-status, .practice-controls label { color: #525252; font-size: 13px; }
+.practice-target-card { display: grid; gap: 4px; margin: 16px 0; padding: 24px 16px; border: 2px solid #171717; border-radius: 6px; text-align: center; }
+.practice-target-card small, .practice-user-card small { color: #525252; font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.practice-target-card strong { display: block; font-size: clamp(56px, 14vw, 88px); line-height: 1; }
+.practice-target-card span, .practice-user-card span { color: #525252; font-size: 14px; }
+.pitch-meter { padding: 16px 12px; border: 1px solid #d4d4d4; border-radius: 6px; }
+.pitch-meter-header, .pitch-trail-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #525252; font-size: 13px; }
+.pitch-meter-header > span, .pitch-trail-heading > span:first-child { font-weight: 700; }
+.pitch-meter-header > b { color: #171717; }
+.tuner-state { font-size: 14px; letter-spacing: .04em; }
+.tuner-flat { color: #1d4ed8; }
+.tuner-in-tune { color: #15803d; }
+.tuner-sharp { color: #b91c1c; }
+.tuner-no-signal { color: #737373; }
+.meter-scale { position: relative; height: 68px; margin: 12px 2px 4px; border-top: 2px solid #171717; border-bottom: 1px solid #a3a3a3; }
+.tuner-zone { position: absolute; top: 0; bottom: 0; left: 40%; width: 20%; background: #dcfce7; }
+.meter-center { position: absolute; top: 0; bottom: 0; left: 50%; border-left: 2px solid #171717; }
+.meter-marker { position: absolute; top: 8px; bottom: 21px; width: 4px; margin-left: -2px; border-radius: 2px; background: #171717; }
+.meter-label { position: absolute; bottom: 4px; color: #525252; font-size: 10px; transform: translateX(-50%); }
+.meter-label-left { left: 0; transform: none; }
+.meter-label-quarter { left: 25%; }
+.meter-label-ten-left { left: 40%; }
+.meter-label-center { left: 50%; font-weight: 700; }
+.meter-label-ten-right { left: 60%; }
+.meter-label-three-quarter { left: 75%; }
+.meter-label-right { right: 0; transform: none; }
+.pitch-trail-heading { margin-top: 12px; font-size: 11px; }
+.pitch-trail { display: block; width: 100%; height: 120px; margin-top: 4px; overflow: visible; border: 1px solid #e5e5e5; background: repeating-linear-gradient(to bottom, #fff 0 29px, #f5f5f5 29px 30px); }
+.trail-center { stroke: #737373; stroke-dasharray: 2 2; stroke-width: .8; }
+.trail-guide { stroke: #d4d4d4; stroke-dasharray: 1 2; stroke-width: .5; }
+.trail-line { fill: none; stroke: #171717; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.pitch-trail-empty { margin: 4px 0 0; color: #737373; font-size: 12px; }
+.practice-user-card { display: grid; gap: 12px; margin-top: 16px; padding: 16px; border: 1px solid #d4d4d4; border-radius: 6px; }
+.practice-user-card strong { display: block; margin: 4px 0; font-size: 40px; line-height: 1; }
+.practice-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.practice-stats span { display: grid; gap: 3px; color: #525252; font-size: 12px; }
+.practice-stats b { color: #171717; font-size: 18px; }
+.sustain-track { height: 8px; overflow: hidden; border-radius: 99px; background: #e5e5e5; }
+.sustain-track span { display: block; height: 100%; background: #171717; }
+.practice-status, .practice-controls label { color: #525252; font-size: 13px; }
 .practice-actions, .practice-navigation, .practice-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
-.practice-actions button, .practice-navigation button { min-height: 38px; padding: 8px 12px; border: 1px solid #171717; border-radius: 4px; background: #fff; cursor: pointer; }
+.practice-actions button, .practice-navigation button, .practice-options button { min-height: 44px; padding: 8px 12px; border: 1px solid #171717; border-radius: 4px; background: #fff; cursor: pointer; }
 .practice-actions button:first-child { color: #fff; background: #171717; }
 .practice-actions button:disabled, .practice-navigation button:disabled { cursor: not-allowed; opacity: .45; }
 .practice-navigation { justify-content: space-between; }
@@ -57,7 +93,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   .app-content { padding-top: 40px; }
   .practice-backdrop { padding: 12px; }
   .practice-panel { padding: 16px; }
-  .practice-readout { grid-template-columns: 1fr; }
   .practice-meta { align-items: flex-start; flex-direction: column; }
+  .practice-stats { grid-template-columns: 1fr; }
   .practice-summary { grid-template-columns: 1fr; }
 }

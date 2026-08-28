@@ -14,7 +14,7 @@ describe("target note sequencing", () => {
 
   it("transposes each pattern cycle within the requested range", () => {
     const exercise = { ...exercises.find((item) => item.id === "humming")!, pattern: [0, 2] };
-    const item = { exerciseId: exercise.id, order: 0, duration: 24, tempo: 60, startNote: "C4", endNote: "G4", transpositionStep: 2, referenceVolume: 0.5, restAfter: 0 };
+    const item = { exerciseId: exercise.id, order: 0, duration: 30, tempo: 60, startNote: "C4", endNote: "G4", transpositionStep: 2, referenceVolume: 0.5, restAfter: 0 };
     const notes = buildTargetNotes(exercise, item);
 
     expect(notes.map((note) => note.note)).toEqual(["C4", "D4", "D4", "E4", "E4", "F#4"]);
@@ -26,5 +26,21 @@ describe("target note sequencing", () => {
     const item = { exerciseId: exercise.id, order: 0, duration: 3, tempo: 60, startNote: "A4", endNote: "A4", transpositionStep: 0, referenceVolume: 0.5, restAfter: 0 };
 
     expect(buildTargetNotes(exercise, item, 442)[0].frequency).toBeCloseTo(442, 3);
+  });
+
+  it("uses the exercise sing duration while preserving tempo timing", () => {
+    const exercise = { ...exercises.find((item) => item.id === "humming")!, pattern: [0] };
+    const item = { exerciseId: exercise.id, order: 0, duration: 6, tempo: 60, startNote: "C4", endNote: "C4", transpositionStep: 0, referenceVolume: 0.5, restAfter: 0 };
+    const note = buildTargetNotes(exercise, item)[0];
+
+    expect(note.singEndMs - note.singStartMs).toBe(3000);
+  });
+
+  it("keeps faster scale timing BPM-aware without shortening its configured window", () => {
+    const exercise = { ...exercises.find((item) => item.id === "five-note-major")!, pattern: [0] };
+    const item = { exerciseId: exercise.id, order: 0, duration: 5, tempo: 240, startNote: "C4", endNote: "C4", transpositionStep: 0, referenceVolume: 0.5, restAfter: 0 };
+    const note = buildTargetNotes(exercise, item)[0];
+
+    expect(note.singEndMs - note.singStartMs).toBe(2000);
   });
 });
