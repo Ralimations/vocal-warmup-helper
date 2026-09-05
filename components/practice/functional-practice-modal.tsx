@@ -11,6 +11,7 @@ import { calculatePitchStability, centsFromTarget, getPitchInputState, getPracti
 import { usePracticeStore } from "@/stores/practice-store";
 import { PitchMeter } from "@/components/practice/pitch-meter";
 import { DiagnosticsPanel } from "@/components/practice/diagnostics-panel";
+import { FallingNoteGuide } from "@/components/practice/falling-note-guide";
 import type { PitchFrame } from "@/types/domain";
 
 function formatTime(milliseconds: number): string {
@@ -266,6 +267,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
   const hold = getSuccessfulHoldProgress(snapshot.successfulHoldMs, snapshot.requiredHoldMs);
   const tunerState = getTunerState(visual.cents);
   const targetName = current?.note ?? "the target";
+  const guideElapsedMs = isPitchSequence ? snapshot.exerciseElapsedMs : (current?.startMs ?? 0) + snapshot.currentTargetElapsedMs;
   const guidance = isComplete
     ? "✓ EXERCISE COMPLETE"
     : isTimed
@@ -327,6 +329,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
         </>}
 
         <div className="practice-guidance" aria-live="polite">{guidance}</div>
+        {isPitchExercise && <FallingNoteGuide notes={snapshot.targetNotes} elapsedMs={guideElapsedMs} currentTargetId={current?.id} detectedMidi={visual.pitch?.midiNumber} phase={snapshot.phase} />}
         {(isPitchExercise || isContinuous) && <PitchMeter cents={visual.cents} history={visual.history} nowMs={visual.nowMs} target={current} showTuner={isPitchExercise} informational={isContinuous} />}
 
         {!isTimed && <div className="practice-user-card">
@@ -360,7 +363,7 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
           <>
             <div className="practice-actions">
               <button type="button" onClick={start}>{isPaused ? "Resume" : isRunning ? "Listening" : "Start practice"}</button>
-              {isPitchExercise && <button type="button" onClick={() => current && tonePlayer.current.start(current.note, guideVolume)} disabled={!current}>Replay guide</button>}
+              {isPitchExercise && <button type="button" onClick={() => current && tonePlayer.current.replay(current.note, guideVolume)} disabled={!current}>Replay piano</button>}
               {completionMode === "manual" && <button type="button" onClick={complete}>Complete</button>}
             </div>
             <div className="practice-navigation">
@@ -368,8 +371,8 @@ export function FunctionalPracticeModal({ onClose }: { onClose: () => void }) {
               <button type="button" onClick={next}>{isPitchSequence ? "Skip target" : "Skip exercise"}</button>
             </div>
             <div className="practice-options">
-              <label><input type="checkbox" checked={guideToneOn} onChange={(event) => setGuideToneOn(event.target.checked)} /> Guide tone</label>
-              <label>Volume <input aria-label="Guide tone volume" type="range" min="0" max="0.5" step="0.01" value={guideVolume} onChange={(event) => setGuideVolume(Number(event.target.value))} /></label>
+              <label><input type="checkbox" checked={guideToneOn} onChange={(event) => setGuideToneOn(event.target.checked)} /> Piano guide</label>
+              <label>Volume <input aria-label="Piano guide volume" type="range" min="0" max="0.5" step="0.01" value={guideVolume} onChange={(event) => setGuideVolume(Number(event.target.value))} /></label>
               {isRunning && <button type="button" onClick={pause}>Pause</button>}
             </div>
           </>

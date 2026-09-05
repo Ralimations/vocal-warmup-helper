@@ -45,7 +45,7 @@ afterEach(() => {
 });
 
 describe("ReferenceTonePlayer", () => {
-  it("starts one sustained oscillator per target and replaces it on target change", async () => {
+  it("layers piano harmonics for each target and replaces the voice on target change", async () => {
     const context = new FakeAudioContext();
     Object.defineProperty(window, "AudioContext", { configurable: true, value: vi.fn(() => context) });
     const player = new ReferenceTonePlayer();
@@ -53,12 +53,17 @@ describe("ReferenceTonePlayer", () => {
     player.start("E4");
     player.start("E4");
 
-    expect(context.oscillators).toHaveLength(1);
-    expect(context.oscillators[0].start).toHaveBeenCalledOnce();
-    expect(context.oscillators[0].stop).not.toHaveBeenCalled();
+    expect(context.oscillators).toHaveLength(3);
+    expect(context.oscillators.map((oscillator) => oscillator.type)).toEqual(["sine", "sine", "sine"]);
+    expect(context.oscillators.map((oscillator) => oscillator.frequency.value)).toEqual([
+      expect.closeTo(329.63, 1),
+      expect.closeTo(659.26, 1),
+      expect.closeTo(988.89, 1),
+    ]);
+    expect(context.oscillators.every((oscillator) => oscillator.start.mock.calls.length === 1)).toBe(true);
     player.start("F4");
-    expect(context.oscillators).toHaveLength(2);
-    expect(context.oscillators[0].stop).toHaveBeenCalledOnce();
+    expect(context.oscillators).toHaveLength(6);
+    expect(context.oscillators.slice(0, 3).every((oscillator) => oscillator.stop.mock.calls.length >= 1)).toBe(true);
     player.close();
   });
 
@@ -73,7 +78,9 @@ describe("ReferenceTonePlayer", () => {
 
     const gain = context.createGain.mock.results[0]?.value as FakeGain;
     expect(gain.gain.setTargetAtTime).toHaveBeenCalled();
-    expect(context.oscillators[0].stop).toHaveBeenCalledOnce();
+    expect(context.oscillators.every((oscillator) => oscillator.stop.mock.calls.length >= 1)).toBe(true);
+    player.replay("E4");
+    expect(context.oscillators).toHaveLength(6);
     player.close();
   });
 });

@@ -62,6 +62,26 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .practice-target-card strong { display: block; font-size: clamp(56px, 14vw, 88px); line-height: 1; }
 .practice-target-card span, .practice-user-card span { color: #525252; font-size: 14px; }
 .practice-guidance { min-height: 48px; display: grid; place-items: center; margin: 16px 0; padding: 12px; border: 2px solid #171717; border-radius: 4px; font-size: 15px; font-weight: 700; text-align: center; }
+.falling-note-guide { margin-bottom: 12px; overflow: hidden; border: 1px solid #d4d4d4; border-radius: 6px; background: #111827; }
+.falling-note-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; color: #d1d5db; font-size: 11px; }
+.falling-note-heading span:first-child { color: #fff; font-size: 13px; font-weight: 700; }
+.falling-note-guide svg { display: block; width: 100%; height: auto; max-height: 280px; }
+.piano-roll-background { fill: #111827; }
+.piano-roll-lane { fill: transparent; stroke: rgba(255, 255, 255, .06); stroke-width: 1; }
+.piano-roll-lane.black { fill: rgba(0, 0, 0, .18); }
+.falling-note rect { fill: #60a5fa; stroke: #bfdbfe; stroke-width: 1.5; }
+.falling-note.current rect { fill: #fbbf24; stroke: #fef3c7; filter: drop-shadow(0 0 7px rgba(251, 191, 36, .7)); }
+.falling-note text { fill: #0f172a; font-size: 10px; font-weight: 800; text-anchor: middle; }
+.piano-strike-line { stroke: #f9fafb; stroke-width: 2; }
+.piano-strike-label { fill: #fff; font-size: 10px; font-weight: 800; }
+.detected-note-marker circle { fill: #34d399; stroke: #d1fae5; stroke-width: 2; }
+.detected-note-marker line { stroke: #fff; stroke-width: 2; }
+.piano-key rect { stroke: #111827; stroke-width: 1; }
+.piano-key.white rect { fill: #f9fafb; }
+.piano-key.black rect { fill: #374151; }
+.piano-key.target rect { fill: #fbbf24; }
+.piano-key.detected rect { stroke: #10b981; stroke-width: 4; }
+.piano-key text { fill: #6b7280; font-size: 9px; font-weight: 700; text-anchor: middle; }
 .pitch-meter { padding: 16px 12px; border: 1px solid #d4d4d4; border-radius: 6px; }
 .pitch-meter-header, .pitch-trail-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #525252; font-size: 13px; }
 .pitch-meter-header > span, .pitch-trail-heading > span:first-child { font-weight: 700; }
